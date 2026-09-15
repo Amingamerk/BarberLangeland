@@ -1,0 +1,73 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<!-- Hero: video med mørkt overlay -->
+<section class="hero-video">
+    <video autoplay muted loop playsinline>
+        <source src="~/videos/videoplayback.mp4" type="video/mp4">
+    </video>
+    <div class="hero-overlay">
+        <div class="hero-content">
+            <p class="hero-subtitle">Velkommen til Frisør Langeland</p>
+            <h1 class="hero-title">Personlighed & Håndværk</h1>
+            <p class="hero-description">
+                Vi er en lille lokal frisør med fokus på godt håndværk og personlig service. Her er der tid til dig og dine ønsker – uanset om du er til det klassiske, moderne eller bare trænger til en frisk klipning. Kom forbi og oplev en hyggelig frisør, hvor kvalitet og nærvær er i fokus.
+            </p>
+            <div class="hero-buttons">
+                <a asp-controller="Booking" asp-action="Index" class="btn btn-book">Book en tid</a>
+                <a href="#priser" class="btn btn-outline-book">Priser</a>
+                <a href="#about-us" class="btn btn-outline-book">Om os</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Om os sektion -->
+<section class="about-section" id="about-us">
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <img src="~/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg" class="img-thumbnail" alt="Bashar Al-Haj, frisør" />
+            </div>
+            <div class="col-lg-6">
+                <h2>Om os</h2>
+                <p>
+                    Frisør Langeland har været i branchen siden 2011. Vi bygger på old school
+                    barbertradition, skarpe fades og moderne styling med håndværk i ryggen.
+                </p>
+                <p>
+                    Vi giver dig en ægte oplevelse, hvor klipningen er skræddersyet til dig –
+                    fra det klassiske herreklip til den friske skægtrimning. Kom forbi og
+                    oplev forskellen med over 10 års erfaring bag saksen.
+                </p>
+                <a href="#book" class="btn btn-blue text-light rounded-pill px-4 mt-3">
+                    Book nu
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="review-section" id="review">
+
+    <div class="container-fluid">
+
+        <div class="row justify-content-center">
+
+            <div class="col-lg-10">
+
+                <h1 class="text-center">
+                    Hvad kunder siger om os
+                </h1>
+                <script src="https://elfsightcdn.com/platform.js" async></script>
+                <div class="elfsight-app-e6cb43a2-3fbc-4f5b-b42f-15d498d4988f" data-elfsight-app-lazy></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+

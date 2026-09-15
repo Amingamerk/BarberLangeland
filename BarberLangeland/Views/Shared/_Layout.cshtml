@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Frisør Langeland</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+</head>
+<body>
+
+  
+
+    <header>
+        <nav class="navbar navbar-expand-sm site-navbar">
+            <div class="container-fluid d-flex align-items-center justify-content-between">
+
+                <!-- Venstre: menu (desktop) -->
+                <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
+                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
+
+                    @* 
+                    <li class="nav-item"><a class="nav-link" href="#om-os">Om os</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#priser">Priser</a></li> 
+                    *@
+                </ul>
+
+                <!-- Midt: logo -->
+                <a class="navbar-brand align-content-center mx-auto" asp-controller="Home" asp-action="Index" title="Frisør Langeland">
+                    <img src="~/images/frisør-logo.png" alt="Logo">
+                </a>
+
+                <!-- Højre: menu + book-knap -->
+                <div class="d-flex align-items-center gap-3">
+                    <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                    </ul>
+                    <a href="#book" class="btn-book rounded-pill px-4">Book en tid</a>
+                </div>
+
+                <!-- <partial name="_LoginPartial" />  -->
+            </div>
+        </nav>
+    </header>
+
+    
+    <main role="main" class="pb-3">
+        @RenderBody()
+    </main>
+
+   
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <p>Frisør Langeland</p>
+                    <p>CVR: 33341237</p>
+                    <p>Tlf: 22 82 97 27</p>
+                    <p>Mail: Lai13560@gmail.com</p>
+                    <p>Adresse: Østergade 12, 5900 Rudkøbing</p>
+                    <p class="text-dark-emphasis">&copy; 2026 - Frisør Langeland.</p>
+
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
