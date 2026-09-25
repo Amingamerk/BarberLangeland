@@ -16,8 +16,8 @@
             </p>
             <div class="hero-buttons">
                 <a asp-controller="Booking" asp-action="Index" class="btn btn-book">Book en tid</a>
-                <a href="#priser" class="btn btn-outline-book">Priser</a>
-                <a href="#about-us" class="btn btn-outline-book">Om os</a>
+                <a asp-controller="Home" asp-action="Prices" class="btn btn-outline-book">Priser</a>
+                <a asp-controller="Home" asp-action="About" class="btn btn-outline-book">Om os</a>
             </div>
         </div>
     </div>
@@ -41,7 +41,7 @@
                     fra det klassiske herreklip til den friske skægtrimning. Kom forbi og
                     oplev forskellen med over 10 års erfaring bag saksen.
                 </p>
-                <a href="#book" class="btn btn-blue text-light rounded-pill px-4 mt-3">
+                <a asp-controller="Booking" asp-action="Index" class="btn btn-blue text-light rounded-pill px-4 mt-3">
                     Book nu
                 </a>
             </div>
@@ -70,4 +70,3 @@
     </div>
 
 </section>
-

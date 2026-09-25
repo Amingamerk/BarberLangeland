@@ -20,11 +20,8 @@
                 <!-- Venstre: menu (desktop) -->
                 <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
                     <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
-
-                    @* 
-                    <li class="nav-item"><a class="nav-link" href="#om-os">Om os</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#priser">Priser</a></li> 
-                    *@
+                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="About">Om os</a></li>
+                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Prices">Priser</a></li>
                 </ul>
 
                 <!-- Midt: logo -->
@@ -37,7 +34,7 @@
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
                         <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
                     </ul>
-                    <a href="#book" class="btn-book rounded-pill px-4">Book en tid</a>
+                    <a asp-controller="Booking" asp-action="Index" class="btn-book rounded-pill px-4">Book en tid</a>
                 </div>
 
                 <!-- <partial name="_LoginPartial" />  -->

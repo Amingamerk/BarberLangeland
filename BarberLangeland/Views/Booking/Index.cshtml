@@ -1,0 +1,214 @@
+@model BarberLangeland.ViewModels.BookingViewModel
+
+@{
+    Layout = "_BookingLayout";
+    ViewData["Title"] = "Book en tid";
+}
+
+<div class="booking-page">
+    <div class="booking-shell">
+        <form asp-controller="Booking" asp-action="Index" method="post" class="booking-main">
+            @Html.AntiForgeryToken()
+
+            @if (Model.BookingConfirmed)
+            {
+                <div class="booking-alert booking-alert--success" role="status">
+                    @Model.ConfirmationMessage
+                </div>
+            }
+
+            <div asp-validation-summary="ModelOnly" class="booking-alert booking-alert--error"></div>
+            <partial name="_BarberSelector" model="Model" />
+            <partial name="_ServiceSelector" model="Model" />
+            <partial name="_DateTimeSelector" model="Model" />
+            <partial name="_ContactInformation" model="Model" />
+        </form>
+
+        <partial name="_Sidebar" />
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const barberInput = document.getElementById("BarberId");
+            const serviceInput = document.getElementById("ServiceId");
+            const bookingDateInput = document.getElementById("BookingDate");
+            const bookingTimeInput = document.getElementById("BookingTime");
+            const dateTimeSection = document.querySelector("[data-booking-availability]");
+            const serviceSelect = document.getElementById("ServiceId");
+            const barberImage = document.querySelector(".booking-avatar img");
+            const contactFields = document.querySelector(".booking-contact-grid");
+            const confirmButton = document.querySelector(".booking-button--primary");
+            const timeSelection = document.querySelector("[data-time-selection]");
+
+            function clearSelectedTime() {
+                bookingTimeInput.value = "";
+                document.querySelectorAll("[data-booking-time]").forEach(function (item) {
+                    item.classList.remove("is-selected");
+                });
+                contactFields.disabled = true;
+                confirmButton.disabled = true;
+                document.querySelector("[data-selected-time]").textContent = "Choose a date and time to continue.";
+            }
+
+            function setStepState() {
+                const hasBarber = barberInput.value !== "";
+                const hasService = serviceSelect.value !== "";
+                const hasDate = bookingDateInput.value !== "";
+                const hasTime = bookingTimeInput.value !== "";
+
+                serviceSelect.disabled = !hasBarber;
+                bookingDateInput.disabled = !hasService;
+                timeSelection.setAttribute("aria-disabled", hasDate ? "false" : "true");
+                contactFields.disabled = !hasTime;
+                confirmButton.disabled = !hasTime;
+
+                const barber = barberInput.options[barberInput.selectedIndex];
+                const service = serviceSelect.options[serviceSelect.selectedIndex];
+                if (barber?.dataset.image) {
+                    barberImage.src = barber.dataset.image;
+                }
+                document.querySelector("[data-selected-barber]").textContent = hasBarber
+                    ? "Selected: " + barber.textContent
+                    : "Choose a barber to continue.";
+                document.querySelector("[data-selected-service]").textContent = hasService
+                    ? "Selected: " + service.textContent
+                    : hasBarber ? "Choose a service to continue." : "Choose a barber first.";
+                document.querySelector("[data-selected-date]").textContent = hasService && hasDate
+                    ? "Selected date: " + bookingDateInput.value
+                    : "Choose a date for your treatment.";
+            }
+
+            function renderAvailability(days) {
+                dateTimeSection.innerHTML = "";
+
+                const tabs = document.createElement("div");
+                tabs.className = "booking-tabs";
+                tabs.setAttribute("role", "tablist");
+                tabs.setAttribute("aria-label", "Vælg dag");
+
+                const panels = document.createElement("div");
+                days.forEach(function (day, index) {
+                    const tab = document.createElement("button");
+                    tab.type = "button";
+                    tab.className = "booking-tab" + (index === 0 ? " is-selected" : "");
+                    tab.dataset.dayTab = index;
+                    tab.setAttribute("role", "tab");
+                    tab.setAttribute("aria-selected", index === 0 ? "true" : "false");
+                    tab.innerHTML = day.label + "<small>" + new Date(day.date).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }) + "</small>";
+                    tabs.appendChild(tab);
+
+                    const panel = document.createElement("div");
+                    panel.className = "booking-slot-panel" + (index === 0 ? " is-active" : "");
+                    panel.dataset.dayPanel = index;
+                    panel.setAttribute("role", "tabpanel");
+
+                    if (!day.slots.length) {
+                        panel.innerHTML = '<p class="booking-empty-state">Ingen ledige tider denne dag.</p>';
+                    } else {
+                        const grid = document.createElement("div");
+                        grid.className = "booking-slot-grid";
+                        day.slots.forEach(function (slot) {
+                            const button = document.createElement("button");
+                            button.type = "button";
+                            button.className = "booking-pill booking-time-pill";
+                            button.dataset.bookingDate = day.date;
+                            button.dataset.bookingTime = slot.time;
+                            button.dataset.bookingLabel = slot.label;
+                            button.textContent = slot.label;
+                            grid.appendChild(button);
+                        });
+                        panel.appendChild(grid);
+                    }
+
+                    panels.appendChild(panel);
+                });
+
+                dateTimeSection.appendChild(tabs);
+                dateTimeSection.appendChild(panels);
+                bindAvailabilityControls();
+            }
+
+            async function refreshAvailability() {
+                if (!barberInput.value || !serviceInput.value || !bookingDateInput.value) {
+                    return;
+                }
+
+                clearSelectedTime();
+                dateTimeSection.innerHTML = '<p class="booking-empty-state">Ledige tider indlæses...</p>';
+
+                const query = new URLSearchParams({
+                    barberId: barberInput.value,
+                    serviceId: serviceInput.value,
+                    bookingDate: bookingDateInput.value
+                });
+                const response = await fetch("@Url.Action("Availability", "Booking")?" + query.toString());
+                if (!response.ok) {
+                    dateTimeSection.innerHTML = '<p class="booking-empty-state">Ledige tider kunne ikke indlæses.</p>';
+                    return;
+                }
+
+                renderAvailability(await response.json());
+            }
+
+            function bindAvailabilityControls() {
+                document.querySelectorAll("[data-day-tab]").forEach(function (tab) {
+                    tab.addEventListener("click", function () {
+                        const dayIndex = tab.dataset.dayTab;
+                        document.querySelectorAll("[data-day-tab]").forEach(function (item) {
+                            const selected = item === tab;
+                            item.classList.toggle("is-selected", selected);
+                            item.setAttribute("aria-selected", selected ? "true" : "false");
+                        });
+                        document.querySelectorAll("[data-day-panel]").forEach(function (panel) {
+                            panel.classList.toggle("is-active", panel.dataset.dayPanel === dayIndex);
+                        });
+                    });
+                });
+
+                document.querySelectorAll("[data-booking-time]").forEach(function (slot) {
+                    slot.addEventListener("click", function () {
+                        bookingDateInput.value = slot.dataset.bookingDate;
+                        bookingTimeInput.value = slot.dataset.bookingTime;
+                        document.querySelectorAll("[data-booking-time]").forEach(function (item) {
+                            item.classList.toggle("is-selected", item === slot);
+                        });
+                        document.querySelector("[data-selected-time]").textContent =
+                            "Selected time: " + slot.dataset.bookingLabel;
+                        setStepState();
+                    });
+                });
+            }
+
+            barberInput.addEventListener("change", function () {
+                serviceSelect.value = "";
+                bookingDateInput.value = "";
+                clearSelectedTime();
+                dateTimeSection.innerHTML = '<p class="booking-empty-state">Choose a service to see available times.</p>';
+                setStepState();
+            });
+
+            serviceSelect.addEventListener("change", function () {
+                clearSelectedTime();
+                if (serviceSelect.value) {
+                    bookingDateInput.value = new Date().toISOString().slice(0, 10);
+                    refreshAvailability();
+                } else {
+                    dateTimeSection.innerHTML = '<p class="booking-empty-state">Choose a service to see available times.</p>';
+                }
+                setStepState();
+            });
+
+            bookingDateInput.addEventListener("change", function () {
+                clearSelectedTime();
+                refreshAvailability();
+                setStepState();
+            });
+
+            bindAvailabilityControls();
+            setStepState();
+        });
+    </script>
+}

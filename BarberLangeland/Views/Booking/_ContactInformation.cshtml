@@ -1,0 +1,57 @@
+@model BarberLangeland.ViewModels.BookingViewModel
+
+<section class="booking-section" aria-labelledby="contact-heading">
+    <div class="booking-section__heading">
+        <p class="booking-eyebrow">04</p>
+        <h2 id="contact-heading">Contact information <span>Kontaktoplysninger</span></h2>
+    </div>
+
+    <fieldset class="booking-contact-grid" disabled="@(!Model.BookingTime.HasValue ? "disabled" : null)">
+        <legend class="visually-hidden">Kontaktoplysninger</legend>
+        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+        {
+            Id = "Name",
+            Label = "Name",
+            Placeholder = "Dit navn",
+            AutoComplete = "name",
+            Value = Model.Name
+        }' />
+        <span asp-validation-for="Name" class="booking-validation"></span>
+
+        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+        {
+            Id = "Email",
+            Label = "Email",
+            Type = "email",
+            Placeholder = "din@email.dk",
+            AutoComplete = "email",
+            Value = Model.Email
+        }' />
+        <span asp-validation-for="Email" class="booking-validation"></span>
+
+        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+        {
+            Id = "Phone",
+            Label = "Phone",
+            Type = "tel",
+            Placeholder = "Dit telefonnummer",
+            AutoComplete = "tel",
+            Value = Model.Phone
+        }' />
+        <span asp-validation-for="Phone" class="booking-validation"></span>
+
+        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+        {
+            Id = "Password",
+            Label = "Password",
+            Type = "password",
+            Placeholder = "Din adgangskode",
+            AutoComplete = "current-password"
+        }' />
+        <span asp-validation-for="Password" class="booking-validation"></span>
+    </fieldset>
+
+    <button class="booking-button booking-button--primary" type="submit" disabled="@(!Model.BookingTime.HasValue ? "disabled" : null)">
+        CONFIRM BOOKING <span aria-hidden="true">→</span>
+    </button>
+</section>

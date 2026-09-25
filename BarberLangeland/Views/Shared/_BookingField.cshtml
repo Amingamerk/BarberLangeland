@@ -1,0 +1,12 @@
+@model BarberLangeland.ViewModels.BookingFieldViewModel
+
+<div class="booking-field">
+    <label class="booking-label" for="@Model.Id">@Model.Label</label>
+    <input class="booking-input"
+           id="@Model.Id"
+           name="@Model.Id"
+           type="@Model.Type"
+           placeholder="@Model.Placeholder"
+           autocomplete="@Model.AutoComplete"
+           value="@Model.Value" />
+</div>

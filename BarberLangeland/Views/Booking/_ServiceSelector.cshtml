@@ -1,0 +1,23 @@
+@model BarberLangeland.ViewModels.BookingViewModel
+
+<section class="booking-section" aria-labelledby="service-heading">
+    <div class="booking-section__heading">
+        <p class="booking-eyebrow">02</p>
+        <h2 id="service-heading">Service</h2>
+    </div>
+
+    <div class="booking-control booking-control--grow">
+        <label class="booking-label" asp-for="ServiceId">Service</label>
+        <select class="booking-input" asp-for="ServiceId" disabled="@(Model.BarberId == 0 ? "disabled" : null)">
+            <option value="">Select service</option>
+            @foreach (var service in Model.Services)
+            {
+                <option value="@service.Id">@service.Name (@service.DurationMinutes min)</option>
+            }
+        </select>
+    </div>
+    <p class="booking-selection-summary" data-selected-service>
+        @(Model.BarberId == 0 ? "Choose a barber first." : "Choose a service to continue.")
+    </p>
+    <span asp-validation-for="ServiceId" class="booking-validation"></span>
+</section>

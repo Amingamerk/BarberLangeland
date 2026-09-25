@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Frisør Langeland</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/custom.css" asp-append-version="true" />
+</head>
+<body class="booking-body">
+    <header class="booking-header">
+        <div class="booking-header__inner">
+            <a class="booking-brand" asp-controller="Home" asp-action="Index">
+                <img src="~/images/frisør-logo.png" alt="" />
+                <span>Frisør Langeland</span>
+            </a>
+            <a class="booking-login" asp-area="Identity" asp-page="/Account/Login">Login</a>
+        </div>
+    </header>
+
+    <main role="main">
+        @RenderBody()
+    </main>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
