@@ -14,7 +14,7 @@ public class BarbersController : Controller
     }
 
     // GET: BARBERS
-    public async Task<IActionResult> Index()    
+    public async Task<IActionResult> Index()
     {
         return View(await _context.Barbers.ToListAsync());
     }

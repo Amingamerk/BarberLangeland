@@ -1,0 +1,27 @@
+@model BarberLangeland.ViewModels.BookingViewModel
+
+<section class="booking-section" aria-labelledby="barber-heading">
+    <div class="booking-section__heading">
+        <p class="booking-eyebrow">01</p>
+        <h2 id="barber-heading">Select barber <span>Vælg barber</span></h2>
+    </div>
+
+    <div class="booking-barber">
+        <div class="booking-avatar">
+            <img src="@(Model.Barbers.FirstOrDefault(barber => barber.Id == Model.BarberId)?.ImagePath ?? "/images/Frisør-logo.png")"
+                 alt="Valgt frisør" />
+        </div>
+        <div class="booking-control booking-control--grow">
+            <label class="booking-label" asp-for="BarberId">Name</label>
+            <select class="booking-input" asp-for="BarberId">
+                <option value="">Select barber</option>
+                @foreach (var barber in Model.Barbers)
+                {
+                    <option value="@barber.Id" data-image="@barber.ImagePath">@barber.Name</option>
+                }
+            </select>
+            <span asp-validation-for="BarberId" class="booking-validation"></span>
+        </div>
+    </div>
+    <p class="booking-selection-summary" data-selected-barber>Choose a barber to continue.</p>
+</section>

@@ -1,0 +1,52 @@
+@{
+    ViewData["Title"] = "Priser";
+}
+
+<section class="page-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <p class="hero-subtitle">Frisør Langeland</p>
+            <h1>Priser</h1>
+            <p>Se vores behandlinger og find den tid, der passer til dig.</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <article class="card h-100 p-4">
+                    <div class="card-body d-flex flex-column">
+                        <h2 class="h4">Herreklip</h2>
+                        <p>Klassisk herreklip</p>
+                        <p class="text-muted">30 minutter</p>
+                        <p class="price-value mt-auto">250 kr.</p>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <article class="card h-100 p-4">
+                    <div class="card-body d-flex flex-column">
+                        <h2 class="h4">Børneklip</h2>
+                        <p>Klipning til børn</p>
+                        <p class="text-muted">20 minutter</p>
+                        <p class="price-value mt-auto">180 kr.</p>
+                    </div>
+                </article>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <article class="card h-100 p-4">
+                    <div class="card-body d-flex flex-column">
+                        <h2 class="h4">Skægtrimning</h2>
+                        <p>Trimning af skæg</p>
+                        <p class="text-muted">15 minutter</p>
+                        <p class="price-value mt-auto">120 kr.</p>
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <a asp-controller="Booking" asp-action="Index" class="btn btn-book rounded-pill px-4">
+                Book en tid
+            </a>
+        </div>
+    </div>
+</section>

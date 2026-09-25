@@ -43,6 +43,10 @@ namespace BarberLangeland.Data
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Service>()
+                .Property(service => service.Price)
+                .HasPrecision(18, 2);
+
             // Seed Services
             modelBuilder.Entity<Service>().HasData(
                 new Service
@@ -78,7 +82,7 @@ namespace BarberLangeland.Data
                     Id = 1,
                     Name = "Bashar Al-Haj",
                     Title = "Frisør",
-                    ImagePath = "/images/bashar.jpg"
+                    ImagePath = "/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg"
                 }
             );
         }

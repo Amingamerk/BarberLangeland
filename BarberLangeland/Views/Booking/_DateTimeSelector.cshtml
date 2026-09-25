@@ -1,0 +1,71 @@
+@model BarberLangeland.ViewModels.BookingViewModel
+
+<section class="booking-section" aria-labelledby="date-time-heading">
+    <div class="booking-section__heading">
+        <p class="booking-eyebrow">03</p>
+        <h2 id="date-time-heading">Select time / date <span>Vælg tid / dato</span></h2>
+    </div>
+
+    <div class="booking-date-time">
+        <div class="booking-date-card">
+            <span class="booking-date-card__icon" aria-hidden="true">▣</span>
+            <label class="booking-label" asp-for="BookingDate">Date</label>
+            <input class="booking-input" asp-for="BookingDate" type="date" disabled="@(Model.ServiceId == 0 ? "disabled" : null)" />
+            <p class="booking-help" data-selected-date>
+                @(Model.ServiceId == 0 ? "Choose a service first." : "Vælg en dato for din behandling.")
+            </p>
+        </div>
+
+        <div class="booking-time-card" data-time-selection aria-disabled="@(Model.ServiceId == 0 ? "true" : "false")">
+            <div data-booking-availability>
+                <div class="booking-tabs" role="tablist" aria-label="Vælg dag">
+                @for (var index = 0; index < Model.Days.Count; index++)
+                {
+                    var day = Model.Days[index];
+                    <button type="button"
+                            class="booking-tab @(index == 0 ? "is-selected" : string.Empty)"
+                            data-day-tab="@index"
+                            role="tab"
+                            aria-selected="@(index == 0 ? "true" : "false")">
+                        @day.Label
+                        <small>@day.Date.ToString("dd.MM")</small>
+                    </button>
+                }
+                </div>
+
+                @for (var index = 0; index < Model.Days.Count; index++)
+                {
+                    var day = Model.Days[index];
+                    <div class="booking-slot-panel @(index == 0 ? "is-active" : string.Empty)"
+                         data-day-panel="@index"
+                         role="tabpanel">
+                        @if (day.Slots.Count == 0)
+                        {
+                            <p class="booking-empty-state">Ingen ledige tider denne dag.</p>
+                        }
+                        else
+                        {
+                            <div class="booking-slot-grid">
+                                @foreach (var slot in day.Slots)
+                                {
+                                    <button type="button"
+                                            class="booking-pill booking-time-pill"
+                                            data-booking-date="@day.Date.ToString("yyyy-MM-dd")"
+                                            data-booking-time="@slot.Time"
+                                            data-booking-label="@slot.Label">
+                                        @slot.Label
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <p class="booking-selection-summary" data-selected-time>
+        Choose a date and time to continue.
+    </p>
+    <input asp-for="BookingTime" type="hidden" />
+    <span asp-validation-for="BookingTime" class="booking-validation"></span>
+</section>
