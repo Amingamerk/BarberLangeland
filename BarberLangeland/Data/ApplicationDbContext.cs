@@ -47,6 +47,15 @@ namespace BarberLangeland.Data
                 .Property(service => service.Price)
                 .HasPrecision(18, 2);
 
+            // Identity declares a unique index on Email but UserManager.CreateAsync does not
+            // enforce it, so duplicates were possible. Enforce at the database level.
+            // PhoneNumber is deliberately NOT unique: phone-first authentication treats the
+            // phone number as a lookup key, and family members can legitimately share one.
+            modelBuilder.Entity<ApplicationUser>()
+                .HasIndex(user => user.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_AspNetUsers_Email");
+
             // Seed Services
             modelBuilder.Entity<Service>().HasData(
                 new Service

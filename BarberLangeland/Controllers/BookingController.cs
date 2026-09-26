@@ -3,7 +3,6 @@ using BarberLangeland.Models;
 using BarberLangeland.Services;
 using BarberLangeland.ViewModels;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarberLangeland.Controllers
@@ -13,21 +12,18 @@ namespace BarberLangeland.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBookingAvailabilityService _availabilityService;
         private readonly IBookingService _bookingService;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IPhoneIdentityService _phoneIdentity;
 
         public BookingController(
             ApplicationDbContext context,
             IBookingAvailabilityService availabilityService,
             IBookingService bookingService,
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            IPhoneIdentityService phoneIdentity)
         {
             _context = context;
             _availabilityService = availabilityService;
             _bookingService = bookingService;
-            _userManager = userManager;
-            _signInManager = signInManager;
+            _phoneIdentity = phoneIdentity;
         }
 
         [HttpGet]
@@ -67,25 +63,60 @@ namespace BarberLangeland.Controllers
                 ModelState.AddModelError(nameof(model.BookingTime), "Vælg et ledigt tidspunkt.");
             }
 
-            if (string.IsNullOrWhiteSpace(model.Name))
-            {
-                ModelState.AddModelError(nameof(model.Name), "Indtast dit navn.");
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Email))
-            {
-                ModelState.AddModelError(nameof(model.Email), "Indtast din e-mail.");
-            }
-
             if (string.IsNullOrWhiteSpace(model.Phone))
             {
                 ModelState.AddModelError(nameof(model.Phone), "Indtast dit telefonnummer.");
             }
-
-            if (string.IsNullOrWhiteSpace(model.Password))
+            else if (string.IsNullOrWhiteSpace(_phoneIdentity.NormalizePhone(model.Phone)))
             {
-                ModelState.AddModelError(nameof(model.Password), "Indtast din adgangskode.");
+                ModelState.AddModelError(nameof(model.Phone), "Indtast et gyldigt telefonnummer.");
             }
+
+            var phoneIsKnown = false;
+
+            if (ModelState.IsValid && !string.IsNullOrWhiteSpace(model.Phone))
+            {
+                // Phone-first: an unknown number needs registration details, a known one only
+                // needs the password. Name and email are therefore validated here rather than
+                // up front, so a returning customer is never asked for them.
+                var outcome = await _phoneIdentity.CheckPhoneAsync(model.Phone);
+
+                if (outcome == PhoneIdentityOutcome.InvalidNumber)
+                {
+                    ModelState.AddModelError(nameof(model.Phone), "Indtast et gyldigt telefonnummer.");
+                }
+                else if (outcome == PhoneIdentityOutcome.KnownNumber)
+                {
+                    phoneIsKnown = true;
+
+                    if (string.IsNullOrWhiteSpace(model.Password))
+                    {
+                        ModelState.AddModelError(nameof(model.Password), "Indtast din adgangskode.");
+                    }
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(model.Name))
+                    {
+                        ModelState.AddModelError(nameof(model.Name), "Indtast dit navn.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(model.Email))
+                    {
+                        ModelState.AddModelError(nameof(model.Email), "Indtast din e-mail.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(model.Password))
+                    {
+                        ModelState.AddModelError(nameof(model.Password), "Vælg en adgangskode.");
+                    }
+                }
+            }
+
+            // Keep the revealed state consistent on redisplay, otherwise a failed POST would
+            // collapse back to the phone-only view and silently discard what the user typed.
+            model.PhoneConfirmed = !string.IsNullOrWhiteSpace(_phoneIdentity.NormalizePhone(model.Phone));
+            model.IsKnownPhone = phoneIsKnown;
 
             if (!ModelState.IsValid || barber == null || service == null || model.BookingTime == null)
             {
@@ -106,44 +137,13 @@ namespace BarberLangeland.Controllers
                 return View(model);
             }
 
-            var phone = model.Phone.Trim();
-            var user = await _userManager.Users.FirstOrDefaultAsync(candidate => candidate.PhoneNumber == phone);
-            if (user != null)
+            var userIdResult = await ResolveUserAsync(model, phoneIsKnown);
+            if (userIdResult.Error != null)
             {
-                var signInResult = await _signInManager.PasswordSignInAsync(
-                    user.UserName ?? phone,
-                    model.Password,
-                    isPersistent: false,
-                    lockoutOnFailure: false);
-
-                if (!signInResult.Succeeded)
-                {
-                    ModelState.AddModelError(nameof(model.Password), "Telefonnummer eller adgangskode er forkert.");
-                    return View(model);
-                }
+                return View(model);
             }
-            else
-            {
-                user = new ApplicationUser
-                {
-                    UserName = phone,
-                    PhoneNumber = phone,
-                    Email = model.Email.Trim()
-                };
 
-                var createResult = await _userManager.CreateAsync(user, model.Password);
-                if (!createResult.Succeeded)
-                {
-                    foreach (var error in createResult.Errors)
-                    {
-                        ModelState.AddModelError(string.Empty, error.Description);
-                    }
-
-                    return View(model);
-                }
-
-                await _signInManager.SignInAsync(user, isPersistent: false);
-            }
+            var user = userIdResult.User!;
 
             var booking = new Booking
             {
@@ -153,6 +153,8 @@ namespace BarberLangeland.Controllers
                 Barber = barber,
                 ServiceId = service.Id,
                 Service = service,
+                // A returning customer never typed a name, so there is nothing to store here.
+                // The views fall back to the phone number rather than misusing the email.
                 Description = model.Name.Trim(),
                 UserId = user.Id,
                 User = user
@@ -169,6 +171,66 @@ namespace BarberLangeland.Controllers
             model.ConfirmationMessage = $"Din tid hos {barber.Name} er bekræftet.";
             ModelState.Clear();
             return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CheckPhone([FromBody] CheckPhoneRequest request)
+        {
+            var outcome = await _phoneIdentity.CheckPhoneAsync(request?.Phone);
+
+            if (outcome == PhoneIdentityOutcome.InvalidNumber)
+            {
+                return BadRequest(new { message = "Indtast et gyldigt telefonnummer." });
+            }
+
+            // Deliberately returns nothing about the account itself so this endpoint cannot
+            // be used to discover which phone numbers are registered.
+            return Json(new { exists = outcome == PhoneIdentityOutcome.KnownNumber });
+        }
+
+        private async Task<(ApplicationUser? User, string? Error)> ResolveUserAsync(BookingViewModel model, bool phoneIsKnown)
+        {
+            if (phoneIsKnown)
+            {
+                var signedIn = await _phoneIdentity.SignInWithPhoneAsync(model.Phone, model.Password);
+
+                if (!signedIn)
+                {
+                    ModelState.AddModelError(nameof(model.Password), "Telefonnummer eller adgangskode er forkert.");
+                    return (null, "password");
+                }
+            }
+            else
+            {
+                var registerResult = await _phoneIdentity.RegisterWithPhoneAsync(
+                    model.Phone,
+                    model.Name,
+                    model.Email,
+                    model.Password);
+
+                if (!registerResult.Succeeded)
+                {
+                    foreach (var error in registerResult.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    }
+
+                    return (null, "register");
+                }
+            }
+
+            var signedInUser = await _context.Users
+                .Include(u => u.Bookings)
+                .FirstOrDefaultAsync(u => u.PhoneNumber == _phoneIdentity.NormalizePhone(model.Phone));
+
+            if (signedInUser == null)
+            {
+                ModelState.AddModelError(string.Empty, "Kunne ikke finde din konto.");
+                return (null, "missing");
+            }
+
+            return (signedInUser, null);
         }
 
         [HttpGet]
@@ -242,5 +304,11 @@ namespace BarberLangeland.Controllers
                     model.BookingDate);
             }
         }
+    }
+
+    /// <summary>Body of the step 4 phone lookup.</summary>
+    public class CheckPhoneRequest
+    {
+        public string? Phone { get; set; }
     }
 }

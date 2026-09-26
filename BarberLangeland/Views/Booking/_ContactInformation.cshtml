@@ -6,8 +6,10 @@
         Number = 4,
         Step = "contact",
         Title = "Kontaktoplysninger",
-        Subtitle = "Udfyld dine oplysninger",
-        Status = Model.BookingTime == null ? "Vælg tidspunkt for at fortsætte" : "Udfyld dine oplysninger"
+        Subtitle = "Log ind eller opret konto",
+        Status = Model.PhoneConfirmed
+            ? (Model.IsKnownPhone ? "Velkommen tilbage" : "Opret konto")
+            : "Vælg tidspunkt for at fortsætte"
     };
 }
 
@@ -17,52 +19,92 @@
     <div class="booking-step__content">
     <fieldset class="booking-contact-grid" data-contact-fields>
         <legend class="visually-hidden">Kontaktoplysninger</legend>
-        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-        {
-            Id = "Name",
-            Label = "Navn",
-            Placeholder = "Dit navn",
-            AutoComplete = "name",
-            Value = Model.Name
-        }' />
-        <span asp-validation-for="Name" class="booking-validation"></span>
 
-        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-        {
-            Id = "Email",
-            Label = "E-mail",
-            Type = "email",
-            Placeholder = "din@email.dk",
-            AutoComplete = "email",
-            Value = Model.Email
-        }' />
-        <span asp-validation-for="Email" class="booking-validation"></span>
-
-        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-        {
-            Id = "Phone",
-            Label = "Telefon",
-            Type = "tel",
-            Placeholder = "Dit telefonnummer",
-            AutoComplete = "tel",
-            Value = Model.Phone
-        }' />
+        @* Phone is the only field asked for up front; everything else is revealed after. *@
+        <div class="booking-phone-row" data-phone-row>
+            <div class="booking-phone-row__prefix">
+                <label class="booking-field__label" for="PhoneCountryCode">Land</label>
+                <select class="booking-field__input" id="PhoneCountryCode" name="PhoneCountryCode"
+                        data-country-select autocomplete="country">
+                    <option value="DK" selected>+45</option>
+                </select>
+            </div>
+            <div class="booking-phone-row__number">
+                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+                {
+                    Id = "Phone",
+                    Label = "Telefonnummer",
+                    Type = "tel",
+                    Placeholder = "12 34 56 78",
+                    AutoComplete = "tel",
+                    Value = Model.Phone
+                }' />
+            </div>
+        </div>
         <span asp-validation-for="Phone" class="booking-validation"></span>
+        <p class="booking-validation" data-phone-error role="alert" hidden></p>
 
-        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-        {
-            Id = "Password",
-            Label = "Adgangskode",
-            Type = "password",
-            Placeholder = "Din adgangskode",
-            AutoComplete = "current-password"
-        }' />
-        <span asp-validation-for="Password" class="booking-validation"></span>
+        <button class="booking-button booking-button--secondary" type="button" data-check-phone-button hidden>
+            Næste <span aria-hidden="true">»</span>
+        </button>
+
+        @* Revealed only after the server has confirmed whether the number is registered. *@
+        <div class="booking-account-reveal" data-account-reveal aria-live="polite" hidden>
+            @if (Model.IsKnownPhone)
+            {
+                <p class="booking-account-reveal__hint">Velkommen tilbage. Indtast din adgangskode for at fortsætte.</p>
+
+                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+                {
+                    Id = "Password",
+                    Label = "Adgangskode",
+                    Type = "password",
+                    Placeholder = "Din adgangskode",
+                    AutoComplete = "current-password"
+                }' />
+                <span asp-validation-for="Password" class="booking-validation"></span>
+            }
+            else if (Model.PhoneConfirmed)
+            {
+                <p class="booking-account-reveal__hint">Vi fandt ikke en konto med dette nummer. Opret din konto for at fortsætte.</p>
+
+                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+                {
+                    Id = "Name",
+                    Label = "Navn",
+                    Placeholder = "Dit navn",
+                    AutoComplete = "name",
+                    Value = Model.Name
+                }' />
+                <span asp-validation-for="Name" class="booking-validation"></span>
+
+                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+                {
+                    Id = "Email",
+                    Label = "E-mail",
+                    Type = "email",
+                    Placeholder = "din@email.dk",
+                    AutoComplete = "email",
+                    Value = Model.Email
+                }' />
+                <span asp-validation-for="Email" class="booking-validation"></span>
+
+                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+                {
+                    Id = "Password",
+                    Label = "Vælg adgangskode",
+                    Type = "password",
+                    Placeholder = "Mindst 6 tegn",
+                    AutoComplete = "new-password"
+                }' />
+                <span asp-validation-for="Password" class="booking-validation"></span>
+            }
+        </div>
+
+        <button class="booking-button booking-button--primary" type="submit" data-confirm-button>
+            Bekræft booking <span aria-hidden="true">→</span>
+        </button>
     </fieldset>
-
-    <button class="booking-button booking-button--primary" type="submit" data-confirm-button>
-        Bekræft booking <span aria-hidden="true">→</span>
-    </button>
     </div>
     </div>
 </section>

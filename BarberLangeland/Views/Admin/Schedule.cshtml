@@ -1,0 +1,108 @@
+@model AdminScheduleViewModel
+@{
+    ViewData["Title"] = "Dagens skema";
+    var yesterday = Model.Date.AddDays(-1);
+    var tomorrow = Model.Date.AddDays(1);
+}
+
+<section class="container section-padding">
+    <h1 class="section-title">Dagens skema</h1>
+
+    <form method="get" asp-action="Schedule" class="admin-schedule__date">
+        <a class="btn btn-outline-secondary" asp-action="Schedule" asp-route-date="@yesterday.ToString("yyyy-MM-dd")">&larr;</a>
+        <input type="date" class="form-control" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+        <a class="btn btn-outline-secondary" asp-action="Schedule" asp-route-date="@tomorrow.ToString("yyyy-MM-dd")">&rarr;</a>
+        <button class="btn btn-book rounded-pill px-4" type="submit">Vis</button>
+    </form>
+
+    <p class="admin-schedule__note">
+        En aflyst booking beholder stadig sin plads i kalenderen, så tiden bliver ikke automatisk
+        ledig igen. Kontakt kunden direkte, hvis tiden skal frigives.
+    </p>
+
+    @if (Model.Groups.Count == 0)
+    {
+        <p>Der er ingen frisører oprettet.</p>
+    }
+    else
+    {
+        foreach (var group in Model.Groups)
+        {
+            <div class="admin-schedule__barber">
+                <h2 class="admin-schedule__barber-name">
+                    @group.Barber.Name
+                    <span class="admin-schedule__count">@group.Bookings.Count</span>
+                </h2>
+
+                @if (group.Bookings.Count == 0)
+                {
+                    <p class="booking-empty-state">Ingen bookinger denne dag.</p>
+                }
+                else
+                {
+                    <table class="admin-schedule__table">
+                        <thead>
+                            <tr>
+                                <th>Tid</th>
+                                <th>Kunde</th>
+                                <th>Behandling</th>
+                                <th>Status</th>
+                                <th>Handling</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var booking in group.Bookings)
+                        {
+                            var customerName = string.IsNullOrWhiteSpace(booking.Description)
+                                ? booking.User?.PhoneNumber
+                                : booking.Description;
+                            var status = booking.IsCancelled ? "Aflyst"
+                                : booking.IsNoShow ? "Mødt ikke op"
+                                : booking.IsConfirmed ? "Bekræftet" : "Afventer";
+
+                            <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
+                                <td>@booking.BookingTime.ToString(@"hh\:mm")</td>
+                                <td>
+                                    @customerName
+                                    <span class="admin-schedule__phone">@booking.User?.PhoneNumber</span>
+                                </td>
+                                <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
+                                <td><span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : booking.IsConfirmed ? "text-bg-success" : "text-bg-light")">@status</span></td>
+                                <td class="admin-schedule__actions">
+                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
+                                        <input type="hidden" name="id" value="@booking.Id" />
+                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                                        <input type="hidden" name="action" value="confirm" />
+                                        <button class="btn btn-sm btn-outline-success" type="submit" @(booking.IsConfirmed && !booking.IsNoShow ? "disabled" : null)>Bekræft</button>
+                                    </form>
+                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
+                                        <input type="hidden" name="id" value="@booking.Id" />
+                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                                        <input type="hidden" name="action" value="noshow" />
+                                        <button class="btn btn-sm btn-outline-warning" type="submit" disabled="@booking.IsNoShow">Mødt ikke op</button>
+                                    </form>
+                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
+                                        <input type="hidden" name="id" value="@booking.Id" />
+                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                                        <input type="hidden" name="action" value="cancel" />
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit" disabled="@booking.IsCancelled">Aflys</button>
+                                    </form>
+                                    @if (booking.IsCancelled || booking.IsNoShow || booking.IsConfirmed)
+                                    {
+                                        <form method="post" asp-action="UpdateStatus" class="d-inline">
+                                            <input type="hidden" name="id" value="@booking.Id" />
+                                            <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                                            <input type="hidden" name="action" value="reopen" />
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Gendan</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    }
+</section>

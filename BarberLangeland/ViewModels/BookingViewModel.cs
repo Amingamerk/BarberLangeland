@@ -20,6 +20,18 @@ namespace BarberLangeland.ViewModels
 
         public string Password { get; set; } = string.Empty;
 
+        /// <summary>
+        /// True once the phone number has been checked against existing accounts, which is
+        /// what gates the name/email/password fields in step 4.
+        /// </summary>
+        public bool PhoneConfirmed { get; set; }
+
+        /// <summary>
+        /// Only meaningful once <see cref="PhoneConfirmed"/> is true: whether the checked
+        /// number belongs to an existing account (sign-in) or a new one (registration).
+        /// </summary>
+        public bool IsKnownPhone { get; set; }
+
         public List<BarberOptionViewModel> Barbers { get; set; } = [];
 
         public List<ServiceOptionViewModel> Services { get; set; } = [];

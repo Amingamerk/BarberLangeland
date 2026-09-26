@@ -1,0 +1,39 @@
+@model Booking
+@{
+    // A returning customer is not asked for a name in the phone-first flow, so fall back to
+    // the phone number on file rather than rendering a blank.
+    var customerName = string.IsNullOrWhiteSpace(Model.Description)
+        ? (Model.User?.PhoneNumber ?? "Kunde")
+        : Model.Description;
+}
+
+<div class="account-booking-card">
+    <div class="account-booking-card__when">
+        <strong>@Model.BookingTime.ToString("ddd dd. MMMM yyyy", new System.Globalization.CultureInfo("da-DK"))</strong>
+        <span>@Model.BookingTime.ToString(@"hh\:mm")</span>
+    </div>
+
+    <div class="account-booking-card__what">
+        <span class="account-booking-card__service">@customerName</span>
+        <span class="account-booking-card__meta">@Model.Service?.Name · @Model.Barber?.Name · @((int)Model.Duration.TotalMinutes) min</span>
+    </div>
+
+    <div class="account-booking-card__status">
+        @if (Model.IsCancelled)
+        {
+            <span class="badge text-bg-secondary">Aflyst</span>
+        }
+        else if (Model.IsNoShow)
+        {
+            <span class="badge text-bg-warning">Mødt ikke op</span>
+        }
+        else if (Model.IsConfirmed)
+        {
+            <span class="badge text-bg-success">Bekræftet</span>
+        }
+        else
+        {
+            <span class="badge text-bg-light">Afventer bekræftelse</span>
+        }
+    </div>
+</div>

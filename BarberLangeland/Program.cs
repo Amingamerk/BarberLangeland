@@ -8,7 +8,7 @@ namespace BarberLangeland
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -19,11 +19,23 @@ namespace BarberLangeland
         builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
-                .AddEntityFrameworkStores<ApplicationDbContext>();
+            // AddIdentity (not AddDefaultIdentity) so RoleManager is registered and the
+            // Admin role can be seeded and used for [Authorize(Roles = "Admin")].
+            // AddDefaultUI chains the Identity.UI login/register pages onto that builder.
+            builder.Services
+                .AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders()
+                .AddDefaultUI();
             builder.Services.AddControllersWithViews();
+            // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
+            // built-in Identity UI is served from Razor Pages.
+            builder.Services.AddRazorPages();
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
+            builder.Services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
+            builder.Services.AddScoped<IPhoneIdentityService, PhoneIdentityService>();
+            builder.Services.AddScoped<IdentitySeeder>();
 
             var app = builder.Build();
 
@@ -31,6 +43,12 @@ namespace BarberLangeland
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 dbContext.Database.Migrate();
+
+                var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+                var salon = builder.Configuration.GetSection("Salon");
+                await seeder.SeedAsync(
+                    salon["AdminEmail"] ?? string.Empty,
+                    salon["AdminPassword"] ?? string.Empty);
             }
 
             // Configure the HTTP request pipeline.

@@ -20,6 +20,10 @@
 
         public bool IsConfirmed { get; set; }
 
+        public bool IsCancelled { get; set; }
+
+        public bool IsNoShow { get; set; }
+
         // Identity bruger
         public string UserId { get; set; } = string.Empty;
 

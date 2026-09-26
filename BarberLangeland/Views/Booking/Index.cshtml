@@ -39,8 +39,22 @@
             const confirmButton = document.querySelector("[data-confirm-button]");
             const timeSelection = document.querySelector("[data-time-selection]");
 
+            const phoneInput = document.getElementById("Phone");
+            const countrySelect = document.querySelector("[data-country-select]");
+            const checkPhoneButton = document.querySelector("[data-check-phone-button]");
+            const accountReveal = document.querySelector("[data-account-reveal]");
+            const phoneError = document.querySelector("[data-phone-error]");
+            let phoneIsKnown = accountReveal ? accountReveal.querySelector("#Password") !== null : false;
+            let phoneChecked = false;
+            let phoneCheckToken = 0;
+
             const steps = Array.from(document.querySelectorAll("[data-step]"));
             const stepOrder = ["barber", "service", "datetime", "contact"];
+
+            // The booking form already carries an antiforgery token; reuse it for the
+            // CheckPhone fetch so the endpoint can stay protected.
+            const antiforgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const antiforgeryToken = antiforgeryInput ? antiforgeryInput.value : "";
 
             function stepByName(name) {
                 return steps.find(function (step) {
@@ -208,8 +222,18 @@
                     expandStep(target);
                 }
 
-                contactFields.disabled = !hasTime;
-                confirmButton.disabled = !hasTime;
+                // Only the phone field is disabled until a time is picked; the revealed
+                // name/email/password inputs must stay enabled or their values would not
+                // post. syncConfirmState is the single source of truth for the CTA.
+                if (phoneInput) {
+                    phoneInput.disabled = !hasTime;
+                }
+                if (checkPhoneButton) {
+                    checkPhoneButton.disabled = !hasTime;
+                }
+                if (!hasTime) {
+                    resetPhoneCheck();
+                }
                 timeSelection.setAttribute("aria-disabled", hasService ? "false" : "true");
             }
 
@@ -218,6 +242,155 @@
                 document.querySelectorAll("[data-booking-time]").forEach(function (item) {
                     item.classList.remove("is-selected");
                 });
+            }
+
+            // Returns the full international number, e.g. +4512345678, so the server can
+            // normalize it against stored E.164 values.
+            function fullPhoneNumber() {
+                if (!phoneInput) {
+                    return "";
+                }
+                const prefix = countrySelect && countrySelect.selectedIndex >= 0
+                    ? countrySelect.options[countrySelect.selectedIndex].text.trim()
+                    : "+45";
+                return (prefix + phoneInput.value.trim()).replace(/\s+/g, "");
+            }
+
+            function showPhoneError(message) {
+                if (!phoneError) {
+                    return;
+                }
+                phoneError.textContent = message || "";
+                phoneError.hidden = !message;
+            }
+
+            // Progressive reveal: ask the server whether the number is registered, then show
+            // either the password field (returning customer) or name/email/password (new).
+            // The endpoint deliberately returns only a boolean so it cannot be used to
+            // discover which numbers are registered.
+            function checkPhone() {
+                if (!phoneInput) {
+                    return Promise.resolve(false);
+                }
+
+                const number = fullPhoneNumber();
+
+                if (!number || number.length < 4) {
+                    showPhoneError("Indtast et gyldigt telefonnummer.");
+                    return Promise.resolve(false);
+                }
+
+                showPhoneError("");
+                const token = ++phoneCheckToken;
+                if (checkPhoneButton) {
+                    checkPhoneButton.disabled = true;
+                }
+
+                return fetch("/Booking/CheckPhone", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": antiforgeryToken
+                    },
+                    body: JSON.stringify({ phone: number })
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            return response.json().catch(function () { return {}; });
+                        }
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        // A slower earlier request must not overwrite a newer one.
+                        if (token !== phoneCheckToken) {
+                            return false;
+                        }
+
+                        if (data.message) {
+                            showPhoneError(data.message);
+                            return false;
+                        }
+
+                        phoneIsKnown = data.exists === true;
+                        phoneChecked = true;
+                        renderAccountReveal(phoneIsKnown);
+                        return true;
+                    })
+                    .catch(function () {
+                        if (token === phoneCheckToken) {
+                            showPhoneError("Kontakt kunne ikke nås. Prøv igen.");
+                        }
+                        return false;
+                    })
+                    .finally(function () {
+                        if (token === phoneCheckToken && checkPhoneButton) {
+                            checkPhoneButton.disabled = false;
+                        }
+                    });
+            }
+
+            function renderAccountReveal(known) {
+                if (!accountReveal) {
+                    return;
+                }
+
+                // The reveal block is server-rendered, so only the hint text and required
+                // fields can be toggled here without a round trip.
+                const hint = accountReveal.querySelector(".booking-account-reveal__hint");
+                if (hint) {
+                    hint.textContent = known
+                        ? "Velkommen tilbage. Indtast din adgangskode for at fortsætte."
+                        : "Vi fandt ikke en konto med dette nummer. Opret din konto for at fortsætte.";
+                }
+
+                ["Name", "Email"].forEach(function (id) {
+                    const field = accountReveal.querySelector("#" + id);
+                    if (field) {
+                        field.closest(".booking-field")?.classList.toggle("is-hidden", known);
+                        field.required = !known;
+                    }
+                });
+
+                const passwordLabel = accountReveal.querySelector('label[for="Password"]');
+                if (passwordLabel) {
+                    passwordLabel.textContent = known ? "Adgangskode" : "Vælg adgangskode";
+                }
+
+                accountReveal.hidden = false;
+                if (checkPhoneButton) {
+                    checkPhoneButton.hidden = true;
+                }
+                syncConfirmState();
+            }
+
+            // Confirm stays disabled until the phone has been checked and, when the number is
+            // known, until a password has been typed.
+            function syncConfirmState() {
+                if (!confirmButton) {
+                    return;
+                }
+                const hasTime = bookingTimeInput.value !== "";
+                let ready = hasTime && phoneChecked;
+
+                if (ready && phoneIsKnown) {
+                    const password = accountReveal && accountReveal.querySelector("#Password");
+                    ready = Boolean(password && password.value.trim().length > 0);
+                }
+
+                confirmButton.disabled = !ready;
+            }
+
+            function resetPhoneCheck() {
+                phoneChecked = false;
+                phoneIsKnown = false;
+                showPhoneError("");
+                if (accountReveal) {
+                    accountReveal.hidden = true;
+                }
+                if (checkPhoneButton) {
+                    checkPhoneButton.hidden = false;
+                }
+                syncConfirmState();
             }
 
             function bindStepToggles() {
@@ -645,6 +818,30 @@
                 bookingDateInput.value = selectedDate || "";
                 renderDateTimeStep();
                 renderSteps();
+            }
+
+            // Any change to the number invalidates the previous check, so the reveal is
+            // collapsed again rather than left showing a stale known/unknown verdict.
+            if (phoneInput) {
+                phoneInput.addEventListener("input", resetPhoneCheck);
+            }
+            if (countrySelect) {
+                countrySelect.addEventListener("change", resetPhoneCheck);
+            }
+            if (checkPhoneButton) {
+                checkPhoneButton.addEventListener("click", checkPhone);
+            }
+            if (phoneInput) {
+                phoneInput.addEventListener("keydown", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        checkPhone();
+                    }
+                });
+            }
+            const passwordInput = accountReveal ? accountReveal.querySelector("#Password") : null;
+            if (passwordInput) {
+                passwordInput.addEventListener("input", syncConfirmState);
             }
 
             bindStepToggles();
