@@ -1,27 +1,50 @@
-<aside class="booking-sidebar" aria-label="Kontakt og åbningstider">
-    <section class="booking-sidebar__section">
-        <p class="booking-sidebar__eyebrow">Questions?</p>
-        <h2>Spørgsmål?</h2>
-        <p class="booking-sidebar__text">Call us</p>
-        <a class="booking-phone" href="tel:+4522829727">22 82 97 27</a>
-    </section>
+@model BookingViewModel
 
-    <section class="booking-sidebar__section">
-        <p class="booking-sidebar__eyebrow">Opening hours</p>
-        <h2>Åbningstider</h2>
-        <dl class="booking-hours">
+<aside class="booking-sidebar" aria-label="Kontakt og åbningstider">
+    <div class="booking-sidebar__card">
+        <div class="booking-sidebar__brand">
+            <img src="~/images/Frisør-logo.png" alt="" class="booking-sidebar__logo" />
             <div>
-                <dt>Mon–Fri</dt>
-                <dd>09:30–17:00</dd>
+                <p class="booking-sidebar__name">@SalonInfo.Name</p>
+                <p class="booking-sidebar__tagline">@SalonInfo.Tagline</p>
             </div>
-            <div>
-                <dt>Sat</dt>
-                <dd>09:30–13:00</dd>
-            </div>
-            <div>
-                <dt>Sun</dt>
-                <dd>Closed</dd>
-            </div>
-        </dl>
-    </section>
+        </div>
+
+        <section class="booking-sidebar__section">
+            <h2 class="booking-sidebar__heading">Spørgsmål?</h2>
+            <a class="booking-sidebar__phone" href="tel:@SalonInfo.PhoneHref">@SalonInfo.PhoneDisplay</a>
+            <a class="booking-sidebar__link" href="mailto:@SalonInfo.Email">@SalonInfo.Email</a>
+        </section>
+
+        <section class="booking-sidebar__section">
+            <h2 class="booking-sidebar__heading">Åbningstider</h2>
+            <table class="booking-sidebar__hours">
+                <tbody>
+                    @foreach (var day in Model.OpeningHours)
+                    {
+                        <tr class="@(day.IsClosed ? "is-closed" : string.Empty)">
+                            <th scope="row">@day.Day</th>
+                            <td>@day.Hours</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="booking-sidebar__section">
+            <h2 class="booking-sidebar__heading">Find os</h2>
+            <address class="booking-sidebar__address">
+                @SalonInfo.AddressLine1<br />
+                @SalonInfo.AddressLine2
+            </address>
+            <a class="booking-sidebar__link" href="@SalonInfo.MapUrl" target="_blank" rel="noopener">Se kort</a>
+        </section>
+
+        <div class="booking-sidebar__social">
+            <a class="booking-sidebar__social-link" href="@SalonInfo.InstagramUrl" target="_blank" rel="noopener" aria-label="Instagram">
+                <span aria-hidden="true">◎</span>
+                <span class="booking-sidebar__social-handle">@SalonInfo.InstagramHandle</span>
+            </a>
+        </div>
+    </div>
 </aside>

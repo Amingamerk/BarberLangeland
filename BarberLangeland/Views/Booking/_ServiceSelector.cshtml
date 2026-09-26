@@ -1,23 +1,38 @@
-@model BarberLangeland.ViewModels.BookingViewModel
+@model BookingViewModel
 
-<section class="booking-section" aria-labelledby="service-heading">
-    <div class="booking-section__heading">
-        <p class="booking-eyebrow">02</p>
-        <h2 id="service-heading">Service</h2>
-    </div>
+@{
+    var step = new BookingStepViewModel
+    {
+        Number = 2,
+        Step = "service",
+        Title = "Vælg behandling",
+        Subtitle = "Hvad vil du have lavet?",
+        Status = Model.ServiceId == 0
+            ? (Model.BarberId == 0 ? "Vælg først en frisør" : "Vælg en behandling")
+            : Model.Services.FirstOrDefault(service => service.Id == Model.ServiceId)?.Name ?? string.Empty
+    };
+}
 
-    <div class="booking-control booking-control--grow">
-        <label class="booking-label" asp-for="ServiceId">Service</label>
-        <select class="booking-input" asp-for="ServiceId" disabled="@(Model.BarberId == 0 ? "disabled" : null)">
-            <option value="">Select service</option>
-            @foreach (var service in Model.Services)
+<section class="booking-step" data-step="2" data-step-name="service">
+    <partial name="_BookingStepHeader" model="step" />
+    <div class="booking-step__body" id="@step.PanelId" data-step-body>
+    <div class="booking-step__content">
+        <div class="booking-option-grid">
+        @foreach (var service in Model.Services)
+        {
+            @await Html.PartialAsync("_OptionCard", new BookingOptionCardViewModel
             {
-                <option value="@service.Id">@service.Name (@service.DurationMinutes min)</option>
-            }
-        </select>
+                Name = nameof(BookingViewModel.ServiceId),
+                InputId = $"service-{service.Id}",
+                Value = service.Id.ToString(),
+                Title = service.Name,
+                Meta = $"{service.DurationMinutes} min · {service.Price:0} kr",
+                Description = string.IsNullOrWhiteSpace(service.Description) ? null : service.Description,
+                Checked = service.Id == Model.ServiceId
+            })
+        }
     </div>
-    <p class="booking-selection-summary" data-selected-service>
-        @(Model.BarberId == 0 ? "Choose a barber first." : "Choose a service to continue.")
-    </p>
     <span asp-validation-for="ServiceId" class="booking-validation"></span>
+    </div>
+    </div>
 </section>
