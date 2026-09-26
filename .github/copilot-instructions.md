@@ -31,6 +31,8 @@ dotnet ef database update --project .\BarberLangeland\BarberLangeland.csproj
 
 The default connection is SQL Server Express in `BarberLangeland/appsettings.json`. Do not commit credentials or machine-specific connection strings; use user secrets or environment-specific configuration when needed.
 
+`Salon:AdminPassword` is **not** in `appsettings.json` and must never be. It lives in user secrets (`dotnet user-secrets set "Salon:AdminPassword" "<password>"`), which are stored outside the repository. `IdentitySeeder` creates no administrator when the value is absent: it logs a warning naming the setting and still creates the `Admin` role, rather than falling back to a guessable default. Only `Salon:AdminEmail` is committed.
+
 ## Architecture and data flow
 
 - `Program.cs` configures dependency injection, SQL Server EF Core, Identity, MVC controllers/views, static assets, conventional routes, and Razor Pages.

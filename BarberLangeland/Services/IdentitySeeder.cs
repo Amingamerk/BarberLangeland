@@ -26,17 +26,35 @@ namespace BarberLangeland.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Ensures the Admin role exists and the administrator is in it. The password is never
+        /// defaulted: without one supplied through user secrets or environment configuration the
+        /// account is not created, because a guessable seeded password is worse than no account.
+        /// </summary>
         public async Task SeedAsync(string adminEmail, string adminPassword)
         {
-            if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword))
-            {
-                await EnsureAdminUserAsync(adminEmail, adminPassword);
-            }
-            else
+            if (string.IsNullOrWhiteSpace(adminEmail))
             {
                 _logger.LogWarning(
-                    "No salon administrator configured; set Salon:AdminEmail and Salon:AdminPassword to create one.");
+                    "No salon administrator configured; set Salon:AdminEmail to create one.");
+                return;
             }
+
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                // Still create the role so the rest of the app behaves normally, but do not
+                // create an account that anyone could sign into with a known password.
+                await EnsureRoleAsync();
+
+                _logger.LogWarning(
+                    "Salon:AdminPassword is not configured, so no administrator account was created " +
+                    "for {Email}. Set it outside source control and restart, for example: " +
+                    "dotnet user-secrets set \"Salon:AdminPassword\" \"<your-password>\"",
+                    adminEmail);
+                return;
+            }
+
+            await EnsureAdminUserAsync(adminEmail, adminPassword);
         }
 
         private async Task EnsureRoleAsync()
@@ -83,9 +101,8 @@ namespace BarberLangeland.Services
                     return;
                 }
 
-                _logger.LogWarning(
-                    "Seeded salon administrator {Email} with the configured default password. " +
-                    "Change it and move the password out of configuration before deploying.",
+                _logger.LogInformation(
+                    "Seeded salon administrator {Email} using the configured password.",
                     email);
             }
 
