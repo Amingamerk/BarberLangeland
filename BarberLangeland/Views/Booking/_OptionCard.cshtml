@@ -1,0 +1,42 @@
+@model BookingOptionCardViewModel
+
+<label class="booking-option">
+    <input class="booking-option__input"
+           type="radio"
+           name="@Model.Name"
+           id="@Model.InputId"
+           value="@Model.Value"
+           data-option-input
+           @(Model.Checked ? "checked" : null)
+           disabled="@(Model.Disabled ? "disabled" : null)" />
+
+    <span class="booking-option__card">
+        @if (!string.IsNullOrWhiteSpace(Model.ImagePath))
+        {
+            <span class="booking-option__media">
+                <img src="@Model.ImagePath" alt="" loading="lazy" />
+            </span>
+        }
+        else
+        {
+            <span class="booking-option__check" aria-hidden="true"></span>
+        }
+
+        <span class="booking-option__body">
+            <span class="booking-option__title">@Model.Title</span>
+            @if (!string.IsNullOrWhiteSpace(Model.Meta))
+            {
+                <span class="booking-option__meta">@Model.Meta</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <span class="booking-option__description">@Model.Description</span>
+            }
+        </span>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Badge))
+        {
+            <span class="booking-option__badge">@Model.Badge</span>
+        }
+    </span>
+</label>

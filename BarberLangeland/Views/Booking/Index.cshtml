@@ -24,7 +24,7 @@
             <partial name="_ContactInformation" model="Model" />
         </form>
 
-        <partial name="_Sidebar" />
+        <partial name="_Sidebar" model="Model" />
     </div>
 </div>
 
@@ -32,183 +32,624 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const barberInput = document.getElementById("BarberId");
-            const serviceInput = document.getElementById("ServiceId");
             const bookingDateInput = document.getElementById("BookingDate");
             const bookingTimeInput = document.getElementById("BookingTime");
             const dateTimeSection = document.querySelector("[data-booking-availability]");
-            const serviceSelect = document.getElementById("ServiceId");
-            const barberImage = document.querySelector(".booking-avatar img");
-            const contactFields = document.querySelector(".booking-contact-grid");
-            const confirmButton = document.querySelector(".booking-button--primary");
+            const contactFields = document.querySelector("[data-contact-fields]");
+            const confirmButton = document.querySelector("[data-confirm-button]");
             const timeSelection = document.querySelector("[data-time-selection]");
+
+            const steps = Array.from(document.querySelectorAll("[data-step]"));
+            const stepOrder = ["barber", "service", "datetime", "contact"];
+
+            function stepByName(name) {
+                return steps.find(function (step) {
+                    return step.dataset.stepName === name;
+                });
+            }
+
+            // The radios are the single source of truth: they carry name="BarberId" /
+            // name="ServiceId", so they post natively and no hidden mirror is needed.
+            // A duplicated hidden input would also make the model binder take
+            // values[0] by DOM order, so keeping one control per value is required.
+            function checkedOption(groupName) {
+                return document.querySelector(
+                    "[data-option-input][name='" + groupName + "']:checked");
+            }
+
+            function selectedId(groupName) {
+                const option = checkedOption(groupName);
+                return option ? option.value : "";
+            }
+
+            function hasSelection(groupName) {
+                return Number(selectedId(groupName)) > 0;
+            }
+
+            function clearGroup(groupName) {
+                document.querySelectorAll(
+                    "[data-option-input][name='" + groupName + "']").forEach(function (item) {
+                        item.checked = false;
+                    });
+            }
+
+            function selectedLabel(groupName) {
+                const option = checkedOption(groupName);
+                if (!option) {
+                    return null;
+                }
+                const card = option.closest(".booking-option");
+                const title = card ? card.querySelector(".booking-option__title") : null;
+                return title ? title.textContent.trim() : null;
+            }
+
+            function syncOptionCards(groupName) {
+                document.querySelectorAll("[data-option-input][name='" + groupName + "']")
+                    .forEach(function (item) {
+                        item.closest(".booking-option")
+                            .classList.toggle("is-selected", item.checked);
+                    });
+            }
+
+            // "man. 28. sep. 2026 · 10:00" — Danish, short and scannable in the header.
+            function formatSelection(iso, time) {
+                const date = parseIso(iso);
+                if (!date) {
+                    return time ? time.slice(0, 5) : "";
+                }
+                const text = date.toLocaleDateString("da-DK", {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                });
+                return time ? text + " · " + time.slice(0, 5) : text;
+            }
+
+            function setStatus(step, text) {
+                const status = step && step.querySelector("[data-step-status]");
+                if (status) {
+                    status.textContent = text;
+                }
+            }
+
+            function expandStep(step) {
+                steps.forEach(function (item) {
+                    const isTarget = item === step;
+                    item.classList.toggle("is-active", isTarget);
+                    const header = item.querySelector("[data-step-toggle]");
+                    if (header) {
+                        header.setAttribute("aria-expanded", isTarget ? "true" : "false");
+                    }
+                });
+            }
+
+            function isUnlocked(name) {
+                if (name === "barber") {
+                    return true;
+                }
+                if (name === "service") {
+                    return hasSelection("BarberId");
+                }
+                if (name === "datetime") {
+                    return hasSelection("BarberId") && hasSelection("ServiceId");
+                }
+                return hasSelection("BarberId")
+                    && hasSelection("ServiceId")
+                    && bookingTimeInput.value !== "";
+            }
+
+            function focusActiveStep() {
+                const active = steps.find(function (step) {
+                    return step.classList.contains("is-active");
+                });
+                if (active) {
+                    const input = active.querySelector(
+                        "input:not([type=hidden]):not([disabled]), button:not([disabled])");
+                    if (input && typeof input.focus === "function") {
+                        input.focus({ preventScroll: true });
+                    }
+                }
+            }
+
+            function advanceTo(name) {
+                const step = stepByName(name);
+                if (step) {
+                    expandStep(step);
+                    focusActiveStep();
+                }
+            }
+
+            function renderSteps() {
+                const hasBarber = hasSelection("BarberId");
+                const hasService = hasSelection("ServiceId");
+                const hasTime = bookingTimeInput.value !== "";
+                const barberLabel = selectedLabel("BarberId");
+                const serviceLabel = selectedLabel("ServiceId");
+
+                steps.forEach(function (step) {
+                    const name = step.dataset.stepName;
+                    const unlocked = isUnlocked(name);
+                    const complete = (name === "barber" && hasBarber)
+                        || (name === "service" && hasService)
+                        || (name === "datetime" && hasTime);
+
+                    step.classList.toggle("is-locked", !unlocked);
+                    step.classList.toggle("is-complete", complete);
+
+                    if (name === "barber") {
+                        setStatus(step, hasBarber ? barberLabel : "Vælg din frisør");
+                    } else if (name === "service") {
+                        setStatus(step, hasService
+                            ? serviceLabel
+                            : hasBarber ? "Vælg en behandling" : "Vælg først en frisør");
+                    } else if (name === "datetime") {
+                        setStatus(step, hasTime
+                            ? formatSelection(bookingDateInput.value, bookingTimeInput.value)
+                            : hasService ? "Vælg dato og tid" : "Vælg først en behandling");
+                    } else {
+                        setStatus(step, hasTime ? "Udfyld dine oplysninger" : "Vælg tidspunkt for at fortsætte");
+                    }
+                });
+
+                // Keep the furthest unlocked step open, unless the visitor has
+                // deliberately opened a different one.
+                let target = stepByName("barber");
+                stepOrder.forEach(function (name) {
+                    if (isUnlocked(name)) {
+                        target = stepByName(name);
+                    }
+                });
+
+                const openStep = steps.find(function (step) {
+                    return step.classList.contains("is-active");
+                });
+                if (hasBarber || hasService || hasTime || !openStep) {
+                    expandStep(target);
+                }
+
+                contactFields.disabled = !hasTime;
+                confirmButton.disabled = !hasTime;
+                timeSelection.setAttribute("aria-disabled", hasService ? "false" : "true");
+            }
 
             function clearSelectedTime() {
                 bookingTimeInput.value = "";
                 document.querySelectorAll("[data-booking-time]").forEach(function (item) {
                     item.classList.remove("is-selected");
                 });
-                contactFields.disabled = true;
-                confirmButton.disabled = true;
-                document.querySelector("[data-selected-time]").textContent = "Choose a date and time to continue.";
             }
 
-            function setStepState() {
-                const hasBarber = barberInput.value !== "";
-                const hasService = serviceSelect.value !== "";
-                const hasDate = bookingDateInput.value !== "";
-                const hasTime = bookingTimeInput.value !== "";
-
-                serviceSelect.disabled = !hasBarber;
-                bookingDateInput.disabled = !hasService;
-                timeSelection.setAttribute("aria-disabled", hasDate ? "false" : "true");
-                contactFields.disabled = !hasTime;
-                confirmButton.disabled = !hasTime;
-
-                const barber = barberInput.options[barberInput.selectedIndex];
-                const service = serviceSelect.options[serviceSelect.selectedIndex];
-                if (barber?.dataset.image) {
-                    barberImage.src = barber.dataset.image;
-                }
-                document.querySelector("[data-selected-barber]").textContent = hasBarber
-                    ? "Selected: " + barber.textContent
-                    : "Choose a barber to continue.";
-                document.querySelector("[data-selected-service]").textContent = hasService
-                    ? "Selected: " + service.textContent
-                    : hasBarber ? "Choose a service to continue." : "Choose a barber first.";
-                document.querySelector("[data-selected-date]").textContent = hasService && hasDate
-                    ? "Selected date: " + bookingDateInput.value
-                    : "Choose a date for your treatment.";
-            }
-
-            function renderAvailability(days) {
-                dateTimeSection.innerHTML = "";
-
-                const tabs = document.createElement("div");
-                tabs.className = "booking-tabs";
-                tabs.setAttribute("role", "tablist");
-                tabs.setAttribute("aria-label", "Vælg dag");
-
-                const panels = document.createElement("div");
-                days.forEach(function (day, index) {
-                    const tab = document.createElement("button");
-                    tab.type = "button";
-                    tab.className = "booking-tab" + (index === 0 ? " is-selected" : "");
-                    tab.dataset.dayTab = index;
-                    tab.setAttribute("role", "tab");
-                    tab.setAttribute("aria-selected", index === 0 ? "true" : "false");
-                    tab.innerHTML = day.label + "<small>" + new Date(day.date).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit" }) + "</small>";
-                    tabs.appendChild(tab);
-
-                    const panel = document.createElement("div");
-                    panel.className = "booking-slot-panel" + (index === 0 ? " is-active" : "");
-                    panel.dataset.dayPanel = index;
-                    panel.setAttribute("role", "tabpanel");
-
-                    if (!day.slots.length) {
-                        panel.innerHTML = '<p class="booking-empty-state">Ingen ledige tider denne dag.</p>';
-                    } else {
-                        const grid = document.createElement("div");
-                        grid.className = "booking-slot-grid";
-                        day.slots.forEach(function (slot) {
-                            const button = document.createElement("button");
-                            button.type = "button";
-                            button.className = "booking-pill booking-time-pill";
-                            button.dataset.bookingDate = day.date;
-                            button.dataset.bookingTime = slot.time;
-                            button.dataset.bookingLabel = slot.label;
-                            button.textContent = slot.label;
-                            grid.appendChild(button);
+            function bindStepToggles() {
+                document.querySelectorAll("[data-step-toggle]").forEach(function (header) {
+                    header.addEventListener("click", function () {
+                        const step = header.closest("[data-step]");
+                        if (step.classList.contains("is-locked")) {
+                            return;
+                        }
+                        const isActive = step.classList.contains("is-active");
+                        steps.forEach(function (item) {
+                            item.classList.toggle("is-active", item === step && !isActive);
+                            const itemHeader = item.querySelector("[data-step-toggle]");
+                            if (itemHeader) {
+                                itemHeader.setAttribute(
+                                    "aria-expanded",
+                                    item === step && !isActive ? "true" : "false");
+                            }
                         });
-                        panel.appendChild(grid);
+                    });
+                });
+            }
+
+            function bindOptionGroups() {
+                document.querySelectorAll(".booking-option").forEach(function (label) {
+                    const option = label.querySelector("[data-option-input]");
+                    if (!option) {
+                        return;
                     }
 
-                    panels.appendChild(panel);
+                    const group = option.name;
+                    const apply = function () {
+                        syncOptionCards(group);
+
+                        if (group === "BarberId") {
+                            clearGroup("ServiceId");
+                            syncOptionCards("ServiceId");
+                            bookingDateInput.value = "";
+                            clearSelectedTime();
+                            resetAvailability("Vælg en behandling for at se ledige tider.");
+                        } else {
+                            clearSelectedTime();
+                            if (hasSelection("ServiceId")) {
+                                refreshAvailability();
+                            } else {
+                                resetAvailability("Vælg en behandling for at se ledige tider.");
+                            }
+                        }
+
+                        renderSteps();
+                        advanceTo(group === "BarberId" ? "service" : "datetime");
+                    };
+
+                    // Bind on the label's click rather than the radio's change event:
+                    // clicking an already-checked radio fires no change event, so the
+                    // wizard would never advance on a re-selection of the same value.
+                    // A label activation can surface as a second click forwarded from
+                    // the control; the same activation is identified by timeStamp +
+                    // coordinates, and suppressed. A genuine later click has a different
+                    // identity and always advances, however quickly it follows.
+                    let lastActivation = null;
+                    label.addEventListener("click", function (event) {
+                        if (option.disabled) {
+                            return;
+                        }
+                        const activation = event.timeStamp + ":" + event.clientX + "," + event.clientY;
+                        if (activation === lastActivation) {
+                            return;
+                        }
+                        lastActivation = activation;
+                        // A click on a checked radio is not re-dispatched to the input,
+                        // so keep the checked state ourselves before applying.
+                        if (!option.checked) {
+                            option.checked = true;
+                        }
+                        apply();
+                    });
+                });
+            }
+
+            const WEEKDAY_LABELS = ["Ma", "Ti", "On", "To", "Fr", "Lø", "Sø"];
+
+            // Availability for the window currently backing the visible month grid.
+            let availability = {};
+            // The one source of truth for which day is highlighted. Never derived from
+            // "today" during a render — only assigned by an explicit auto-select or a click.
+            let selectedDate = null;
+            let visibleMonth = null;
+
+            function toIso(date) {
+                return date.getFullYear() + "-"
+                    + String(date.getMonth() + 1).padStart(2, "0") + "-"
+                    + String(date.getDate()).padStart(2, "0");
+            }
+
+            // Strict yyyy-MM-dd only. The bound BookingDate field is re-rendered on a
+            // validation error in culture format, so anything else must fail loudly
+            // rather than silently becoming an Invalid Date in the step status.
+            function parseIso(iso) {
+                const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+                if (!match) {
+                    return null;
+                }
+                const year = Number(match[1]);
+                const month = Number(match[2]);
+                const day = Number(match[3]);
+                const date = new Date(year, month - 1, day);
+                if (date.getFullYear() !== year
+                    || date.getMonth() !== month - 1
+                    || date.getDate() !== day) {
+                    return null;
+                }
+                return date;
+            }
+
+            function startOfToday() {
+                const now = new Date();
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            }
+
+            // Monday on or before the 1st, so the 6x7 grid starts on a Monday.
+            function gridStartFor(month) {
+                const first = new Date(month.getFullYear(), month.getMonth(), 1);
+                const offset = (first.getDay() + 6) % 7;
+                return new Date(first.getFullYear(), first.getMonth(), 1 - offset);
+            }
+
+            function hasSlots(iso) {
+                const day = availability[iso];
+                return !!day && day.slots.length > 0;
+            }
+
+            function renderCalendar() {
+                if (!visibleMonth) {
+                    return;
+                }
+
+                const gridStart = gridStartFor(visibleMonth);
+                const todayIso = toIso(startOfToday());
+                const monthIndex = visibleMonth.getMonth();
+
+                const card = document.createElement("div");
+                card.className = "booking-calendar";
+
+                const header = document.createElement("div");
+                header.className = "booking-calendar__header";
+
+                const previous = document.createElement("button");
+                previous.type = "button";
+                previous.className = "booking-calendar__nav";
+                previous.setAttribute("aria-label", "Forrige måned");
+                previous.textContent = "‹";
+                previous.addEventListener("click", function () {
+                    shiftMonth(-1);
                 });
 
-                dateTimeSection.appendChild(tabs);
-                dateTimeSection.appendChild(panels);
-                bindAvailabilityControls();
+                const title = document.createElement("span");
+                title.className = "booking-calendar__title";
+                title.textContent = visibleMonth.toLocaleDateString("da-DK", { month: "long", year: "numeric" });
+
+                const next = document.createElement("button");
+                next.type = "button";
+                next.className = "booking-calendar__nav";
+                next.setAttribute("aria-label", "Næste måned");
+                next.textContent = "›";
+                next.addEventListener("click", function () {
+                    shiftMonth(1);
+                });
+
+                header.appendChild(previous);
+                header.appendChild(title);
+                header.appendChild(next);
+
+                const grid = document.createElement("div");
+                grid.className = "booking-calendar__grid";
+
+                WEEKDAY_LABELS.forEach(function (label) {
+                    const cell = document.createElement("span");
+                    cell.className = "booking-calendar__weekday";
+                    cell.textContent = label;
+                    grid.appendChild(cell);
+                });
+
+                for (var offset = 0; offset < 42; offset++) {
+                    const current = new Date(
+                        gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + offset);
+                    const iso = toIso(current);
+                    const isOutOfMonth = current.getMonth() !== monthIndex;
+                    const isPast = iso < todayIso;
+                    const available = hasSlots(iso);
+                    const isSelected = iso === selectedDate;
+
+                    const cell = document.createElement("button");
+                    cell.type = "button";
+                    cell.className = "booking-calendar__day";
+                    cell.textContent = String(current.getDate());
+
+                    if (isOutOfMonth || isPast) {
+                        cell.classList.add("is-muted");
+                    } else {
+                        cell.classList.add(available ? "is-available" : "is-full");
+                    }
+
+                    if (isSelected) {
+                        cell.classList.add("is-selected");
+                        cell.setAttribute("aria-current", "date");
+                    } else {
+                        cell.removeAttribute("aria-current");
+                    }
+
+                    if (!isOutOfMonth && !isPast) {
+                        cell.addEventListener("click", function () {
+                            selectDate(iso);
+                        });
+                    } else {
+                        cell.disabled = true;
+                    }
+
+                    grid.appendChild(cell);
+                }
+
+                card.appendChild(header);
+                card.appendChild(grid);
+                return card;
+            }
+
+            function renderSlotPanel() {
+                const panel = document.createElement("div");
+                panel.className = "booking-slots";
+
+                const heading = document.createElement("div");
+                heading.className = "booking-slots__heading";
+
+                if (!selectedDate) {
+                    heading.textContent = "Ledige tider";
+                    panel.appendChild(heading);
+                    const empty = document.createElement("p");
+                    empty.className = "booking-empty-state";
+                    empty.textContent = "Vælg en dato for at se ledige tider.";
+                    panel.appendChild(empty);
+                    return panel;
+                }
+
+                const label = document.createElement("span");
+                label.className = "booking-slots__label";
+                label.textContent = "Ledige tider ";
+
+                const date = document.createElement("strong");
+                date.className = "booking-slots__date";
+                const parsed = parseIso(selectedDate);
+                date.textContent = parsed
+                    ? parsed.toLocaleDateString("da-DK", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric"
+                    })
+                    : selectedDate;
+
+                heading.appendChild(label);
+                heading.appendChild(date);
+                panel.appendChild(heading);
+
+                const slots = availability[selectedDate] ? availability[selectedDate].slots : [];
+                if (!slots.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "booking-empty-state";
+                    empty.textContent = "Ingen ledige tider denne dag.";
+                    panel.appendChild(empty);
+                    return panel;
+                }
+
+                const grid = document.createElement("div");
+                grid.className = "booking-slot-grid";
+                slots.forEach(function (slot) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "booking-pill booking-time-pill";
+                    button.dataset.bookingTime = slot.time;
+                    button.textContent = slot.label;
+                    if (bookingTimeInput.value && slot.time === bookingTimeInput.value) {
+                        button.classList.add("is-selected");
+                    }
+                    button.addEventListener("click", function () {
+                        bookingTimeInput.value = slot.time;
+                        document.querySelectorAll("[data-booking-time]").forEach(function (item) {
+                            item.classList.toggle("is-selected", item === button);
+                        });
+                        renderSteps();
+                        advanceTo("contact");
+                    });
+                    grid.appendChild(button);
+                });
+
+                panel.appendChild(grid);
+                return panel;
+            }
+
+            function renderDateTimeStep() {
+                if (!dateTimeSection) {
+                    return;
+                }
+                dateTimeSection.innerHTML = "";
+
+                const calendar = renderCalendar();
+                if (!calendar) {
+                    const empty = document.createElement("p");
+                    empty.className = "booking-empty-state";
+                    empty.textContent = "Vælg en behandling for at se ledige tider.";
+                    dateTimeSection.appendChild(empty);
+                    return;
+                }
+
+                dateTimeSection.appendChild(calendar);
+                dateTimeSection.appendChild(renderSlotPanel());
+            }
+
+            // Pick the first day that actually has slots. Given today can be a Sunday or
+            // late in the day, this is normally not "today".
+            function autoSelectFirstAvailable() {
+                const keys = Object.keys(availability);
+                for (var index = 0; index < keys.length; index++) {
+                    if (hasSlots(keys[index])) {
+                        selectedDate = keys[index];
+                        return;
+                    }
+                }
+                selectedDate = null;
+            }
+
+            function selectDate(iso) {
+                selectedDate = iso;
+                // Keep the bound field in step with the highlight so the step status
+                // can never disagree with the selected day.
+                bookingDateInput.value = iso;
+                clearSelectedTime();
+                renderDateTimeStep();
+                renderSteps();
+            }
+
+            async function shiftMonth(step) {
+                visibleMonth = new Date(
+                    visibleMonth.getFullYear(), visibleMonth.getMonth() + step, 1);
+                selectedDate = null;
+                bookingDateInput.value = "";
+                resetAvailability("Ledige tider indlæses...", true);
+                try {
+                    await loadAvailability();
+                } catch (error) {
+                    resetAvailability("Ledige tider kunne ikke indlæses.");
+                    return;
+                }
+                autoSelectFirstAvailable();
+                bookingDateInput.value = selectedDate || "";
+                renderDateTimeStep();
+                renderSteps();
+            }
+
+            function resetAvailability(message, keepMonth) {
+                availability = {};
+                selectedDate = null;
+                // Callers that have already chosen the month to display (the initial
+                // load and month navigation) must not have it cleared here, otherwise
+                // loadAvailability has no month to compute a grid window from.
+                if (!keepMonth) {
+                    visibleMonth = null;
+                }
+                bookingDateInput.value = "";
+                if (!dateTimeSection) {
+                    return;
+                }
+                const empty = document.createElement("p");
+                empty.className = "booking-empty-state";
+                empty.textContent = message;
+                dateTimeSection.innerHTML = "";
+                dateTimeSection.appendChild(empty);
+            }
+
+            async function loadAvailability() {
+                if (!visibleMonth) {
+                    throw new Error("no month selected");
+                }
+                // The grid starts on the Monday on or before the 1st, which is always
+                // before today and is rejected by the server. Clamp the requested window
+                // to today; days before it are rendered muted anyway.
+                const gridStart = gridStartFor(visibleMonth);
+                const today = startOfToday();
+                const requestStart = gridStart > today ? gridStart : today;
+                const query = new URLSearchParams({
+                    barberId: selectedId("BarberId"),
+                    serviceId: selectedId("ServiceId"),
+                    bookingDate: toIso(requestStart),
+                    days: "48"
+                });
+
+                const response = await fetch("@Url.Action("Availability", "Booking")?" + query.toString());
+                if (!response.ok) {
+                    throw new Error("availability");
+                }
+
+                const days = await response.json();
+                availability = {};
+                days.forEach(function (day) {
+                    availability[day.date] = { slots: day.slots || [] };
+                });
             }
 
             async function refreshAvailability() {
-                if (!barberInput.value || !serviceInput.value || !bookingDateInput.value) {
+                if (!hasSelection("BarberId") || !hasSelection("ServiceId")) {
+                    resetAvailability("Vælg en behandling for at se ledige tider.");
                     return;
                 }
 
-                clearSelectedTime();
-                dateTimeSection.innerHTML = '<p class="booking-empty-state">Ledige tider indlæses...</p>';
+                const now = new Date();
+                visibleMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-                const query = new URLSearchParams({
-                    barberId: barberInput.value,
-                    serviceId: serviceInput.value,
-                    bookingDate: bookingDateInput.value
-                });
-                const response = await fetch("@Url.Action("Availability", "Booking")?" + query.toString());
-                if (!response.ok) {
-                    dateTimeSection.innerHTML = '<p class="booking-empty-state">Ledige tider kunne ikke indlæses.</p>';
+                resetAvailability("Ledige tider indlæses...", true);
+                try {
+                    await loadAvailability();
+                } catch (error) {
+                    resetAvailability("Ledige tider kunne ikke indlæses.");
                     return;
                 }
 
-                renderAvailability(await response.json());
+                autoSelectFirstAvailable();
+                bookingDateInput.value = selectedDate || "";
+                renderDateTimeStep();
+                renderSteps();
             }
 
-            function bindAvailabilityControls() {
-                document.querySelectorAll("[data-day-tab]").forEach(function (tab) {
-                    tab.addEventListener("click", function () {
-                        const dayIndex = tab.dataset.dayTab;
-                        document.querySelectorAll("[data-day-tab]").forEach(function (item) {
-                            const selected = item === tab;
-                            item.classList.toggle("is-selected", selected);
-                            item.setAttribute("aria-selected", selected ? "true" : "false");
-                        });
-                        document.querySelectorAll("[data-day-panel]").forEach(function (panel) {
-                            panel.classList.toggle("is-active", panel.dataset.dayPanel === dayIndex);
-                        });
-                    });
-                });
-
-                document.querySelectorAll("[data-booking-time]").forEach(function (slot) {
-                    slot.addEventListener("click", function () {
-                        bookingDateInput.value = slot.dataset.bookingDate;
-                        bookingTimeInput.value = slot.dataset.bookingTime;
-                        document.querySelectorAll("[data-booking-time]").forEach(function (item) {
-                            item.classList.toggle("is-selected", item === slot);
-                        });
-                        document.querySelector("[data-selected-time]").textContent =
-                            "Selected time: " + slot.dataset.bookingLabel;
-                        setStepState();
-                    });
-                });
-            }
-
-            barberInput.addEventListener("change", function () {
-                serviceSelect.value = "";
-                bookingDateInput.value = "";
-                clearSelectedTime();
-                dateTimeSection.innerHTML = '<p class="booking-empty-state">Choose a service to see available times.</p>';
-                setStepState();
-            });
-
-            serviceSelect.addEventListener("change", function () {
-                clearSelectedTime();
-                if (serviceSelect.value) {
-                    bookingDateInput.value = new Date().toISOString().slice(0, 10);
-                    refreshAvailability();
-                } else {
-                    dateTimeSection.innerHTML = '<p class="booking-empty-state">Choose a service to see available times.</p>';
-                }
-                setStepState();
-            });
-
-            bookingDateInput.addEventListener("change", function () {
-                clearSelectedTime();
-                refreshAvailability();
-                setStepState();
-            });
-
-            bindAvailabilityControls();
-            setStepState();
+            bindStepToggles();
+            bindOptionGroups();
+            renderSteps();
         });
     </script>
 }

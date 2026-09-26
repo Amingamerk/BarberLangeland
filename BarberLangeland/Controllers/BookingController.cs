@@ -172,15 +172,24 @@ namespace BarberLangeland.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Availability(int barberId, int serviceId, DateTime bookingDate)
+        public async Task<IActionResult> Availability(int barberId, int serviceId, DateTime bookingDate, int days = 2)
         {
             if (barberId <= 0 || serviceId <= 0 || bookingDate.Date < DateTime.Today)
             {
                 return BadRequest();
             }
 
-            var days = await _availabilityService.GetAvailableDaysAsync(barberId, serviceId, bookingDate);
-            return Json(days.Select(day => new
+            // The month calendar needs a window large enough to fill the whole visible
+            // grid; cap it so a hand-crafted query cannot ask for an unbounded scan.
+            days = Math.Clamp(days, 1, 62);
+
+            var availability = await _availabilityService.GetAvailableDaysAsync(
+                barberId,
+                serviceId,
+                bookingDate,
+                days);
+
+            return Json(availability.Select(day => new
             {
                 date = day.Date.ToString("yyyy-MM-dd"),
                 label = day.Label,
@@ -217,6 +226,8 @@ namespace BarberLangeland.Controllers
                     Price = service.Price
                 })
                 .ToListAsync();
+
+            model.OpeningHours = _availabilityService.GetOpeningHours().ToList();
 
             if (model.BookingDate.Date < DateTime.Today)
             {

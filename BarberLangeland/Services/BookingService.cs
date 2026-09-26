@@ -24,11 +24,20 @@ namespace BarberLangeland.Services
                 return null;
             }
 
-            var overlaps = await _context.Bookings.AnyAsync(b => b.BarberId == booking.BarberId
-                && booking.BookingTime < b.BookingTime + b.Duration
-                && booking.BookingTime + booking.Duration > b.BookingTime);
+            var start = booking.BookingTime;
+            var end = booking.BookingTime + booking.Duration;
 
-            if (overlaps)
+            // Duration is a SQL Server "time" column, so BookingTime + Duration cannot be
+            // translated server-side. Narrow with an index-friendly window in SQL, then apply
+            // the precise overlap test in memory where TimeSpan arithmetic works.
+            var candidates = await _context.Bookings
+                .Where(b => b.BarberId == booking.BarberId
+                    && b.BookingTime < end
+                    && b.BookingTime > start.AddDays(-1))
+                .Select(b => new { b.BookingTime, b.Duration })
+                .ToListAsync();
+
+            if (candidates.Any(b => b.BookingTime + b.Duration > start))
             {
                 return null;
             }

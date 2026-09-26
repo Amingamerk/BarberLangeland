@@ -1,17 +1,26 @@
-@model BarberLangeland.ViewModels.BookingViewModel
+@model BookingViewModel
 
-<section class="booking-section" aria-labelledby="contact-heading">
-    <div class="booking-section__heading">
-        <p class="booking-eyebrow">04</p>
-        <h2 id="contact-heading">Contact information <span>Kontaktoplysninger</span></h2>
-    </div>
+@{
+    var step = new BookingStepViewModel
+    {
+        Number = 4,
+        Step = "contact",
+        Title = "Kontaktoplysninger",
+        Subtitle = "Udfyld dine oplysninger",
+        Status = Model.BookingTime == null ? "Vælg tidspunkt for at fortsætte" : "Udfyld dine oplysninger"
+    };
+}
 
-    <fieldset class="booking-contact-grid" disabled="@(!Model.BookingTime.HasValue ? "disabled" : null)">
+<section class="booking-step" data-step="4" data-step-name="contact">
+    <partial name="_BookingStepHeader" model="step" />
+    <div class="booking-step__body" id="@step.PanelId" data-step-body>
+    <div class="booking-step__content">
+    <fieldset class="booking-contact-grid" data-contact-fields>
         <legend class="visually-hidden">Kontaktoplysninger</legend>
         <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
         {
             Id = "Name",
-            Label = "Name",
+            Label = "Navn",
             Placeholder = "Dit navn",
             AutoComplete = "name",
             Value = Model.Name
@@ -21,7 +30,7 @@
         <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
         {
             Id = "Email",
-            Label = "Email",
+            Label = "E-mail",
             Type = "email",
             Placeholder = "din@email.dk",
             AutoComplete = "email",
@@ -32,7 +41,7 @@
         <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
         {
             Id = "Phone",
-            Label = "Phone",
+            Label = "Telefon",
             Type = "tel",
             Placeholder = "Dit telefonnummer",
             AutoComplete = "tel",
@@ -43,7 +52,7 @@
         <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
         {
             Id = "Password",
-            Label = "Password",
+            Label = "Adgangskode",
             Type = "password",
             Placeholder = "Din adgangskode",
             AutoComplete = "current-password"
@@ -51,7 +60,9 @@
         <span asp-validation-for="Password" class="booking-validation"></span>
     </fieldset>
 
-    <button class="booking-button booking-button--primary" type="submit" disabled="@(!Model.BookingTime.HasValue ? "disabled" : null)">
-        CONFIRM BOOKING <span aria-hidden="true">→</span>
+    <button class="booking-button booking-button--primary" type="submit" data-confirm-button>
+        Bekræft booking <span aria-hidden="true">→</span>
     </button>
+    </div>
+    </div>
 </section>

@@ -1,0 +1,20 @@
+@model BookingStepViewModel
+
+<button class="booking-step__header" type="button"
+        data-step-toggle
+        aria-expanded="true"
+        aria-controls="@Model.PanelId">
+    <span class="booking-step__marker" aria-hidden="true">
+        <span class="booking-step__number">@Model.Number.ToString("00")</span>
+        <span class="booking-step__check" data-step-check>✓</span>
+    </span>
+    <span class="booking-step__titles">
+        <span class="booking-step__title">@Model.Title</span>
+        @if (!string.IsNullOrWhiteSpace(Model.Subtitle))
+        {
+            <span class="booking-step__subtitle">@Model.Subtitle</span>
+        }
+    </span>
+    <span class="booking-step__status" id="@Model.StatusId" data-step-status>@Model.Status</span>
+    <span class="booking-step__chevron" aria-hidden="true"></span>
+</button>

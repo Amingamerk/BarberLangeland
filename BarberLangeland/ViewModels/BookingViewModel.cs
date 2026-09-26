@@ -26,6 +26,8 @@ namespace BarberLangeland.ViewModels
 
         public List<BookingDayViewModel> Days { get; set; } = [];
 
+        public List<OpeningHoursViewModel> OpeningHours { get; set; } = [];
+
         public bool BookingConfirmed { get; set; }
 
         public string? ConfirmationMessage { get; set; }
