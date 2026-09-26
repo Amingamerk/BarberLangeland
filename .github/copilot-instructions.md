@@ -20,6 +20,14 @@ dotnet run --project .\BarberLangeland\BarberLangeland.csproj --launch-profile h
 
 The configured development URLs are `http://localhost:5039` and `https://localhost:7040` (see `BarberLangeland/Properties/launchSettings.json`). Development startup enables the EF migrations endpoint, so the configured SQL Server must be available.
 
+**Stop the app before building.** A running instance locks `bin\Debug\net10.0\BarberLangeland.exe`, and the build fails with `MSB3021`/`MSB3027` ("file is locked by BarberLangeland (pid)"). Stop it first:
+
+```powershell
+Get-Process -Name BarberLangeland -ErrorAction SilentlyContinue | Stop-Process -Force
+```
+
+Alternatively build to a different output path, or run with `dotnet run` and let it own the exe while you iterate on views/CSS only.
+
 There is currently no test project in the solution and no lint/format command configured. Consequently, there is no single-test command yet; do not invent one. For code changes, at minimum run the solution build. If tests are added later, place them in a test project and document the project-specific `dotnet test --filter` syntax here.
 
 Useful EF Core commands, run from the repository root:
