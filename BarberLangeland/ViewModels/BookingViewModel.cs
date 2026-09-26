@@ -84,6 +84,8 @@ namespace BarberLangeland.ViewModels
     {
         public TimeSpan Time { get; set; }
 
-        public string Label => Time.ToString(@"hh\:mm");
+        // TimeSpan has no 24-hour specifier ("HH" throws), and "hh" on a DateTime is the
+        // 12-hour clock. Formatting the hour as an integer keeps this unambiguous either way.
+        public string Label => $"{(int)Time.TotalHours:00}:{Time.Minutes:00}";
     }
 }
