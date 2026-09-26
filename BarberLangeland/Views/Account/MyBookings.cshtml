@@ -1,0 +1,36 @@
+@model MyBookingsViewModel
+@{
+    ViewData["Title"] = "Mine bookinger";
+}
+
+<section class="container section-padding">
+    <h1 class="section-title">Mine bookinger</h1>
+
+    @if (Model.Upcoming.Count == 0 && Model.Past.Count == 0)
+    {
+        <div class="booking-empty-state">
+            <p>Du har ingen bookinger endnu.</p>
+            <a class="btn-book rounded-pill px-4" asp-controller="Booking" asp-action="Index">Book en tid</a>
+        </div>
+    }
+    else
+    {
+        @if (Model.Upcoming.Any())
+        {
+            <h2 class="section-subtitle">Kommende</h2>
+            @foreach (var booking in Model.Upcoming)
+            {
+                <partial name="_BookingSummaryRow" model="booking" />
+            }
+        }
+
+        @if (Model.Past.Any())
+        {
+            <h2 class="section-subtitle">Tidligere</h2>
+            @foreach (var booking in Model.Past)
+            {
+                <partial name="_BookingSummaryRow" model="booking" />
+            }
+        }
+    }
+</section>

@@ -33,6 +33,24 @@
                 <div class="d-flex align-items-center gap-3">
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
                         <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                        @if (User?.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="MyBookings">Mine bookinger</a></li>
+                            <li class="nav-item rounded-pill px-4">
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="nav-link btn btn-link p-0 border-0">Log ud</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="Login">Login</a></li>
+                        }
+                        @if (User?.IsInRole(BarberLangeland.Services.IdentitySeeder.AdminRole) == true)
+                        {
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Admin" asp-action="Schedule">Administration</a></li>
+                        }
                     </ul>
                     <a asp-controller="Booking" asp-action="Index" class="btn-book rounded-pill px-4">Book en tid</a>
                 </div>
