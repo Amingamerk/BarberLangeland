@@ -31,7 +31,7 @@ namespace BarberLangeland.Services
         /// defaulted: without one supplied through user secrets or environment configuration the
         /// account is not created, because a guessable seeded password is worse than no account.
         /// </summary>
-        public async Task SeedAsync(string adminEmail, string adminPassword)
+        public async Task SeedAsync(string? adminEmail, string? adminPassword)
         {
             if (string.IsNullOrWhiteSpace(adminEmail))
             {
