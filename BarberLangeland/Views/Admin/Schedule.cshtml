@@ -61,7 +61,7 @@
                                 : booking.IsConfirmed ? "Bekræftet" : "Afventer";
 
                             <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
-                                <td>@booking.BookingTime.ToString(@"hh\:mm")</td>
+                                <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
                                 <td>
                                     @customerName
                                     <span class="admin-schedule__phone">@booking.User?.PhoneNumber</span>
