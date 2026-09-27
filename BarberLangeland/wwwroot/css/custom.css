@@ -1151,25 +1151,114 @@ img {
    would win over the reservation, collapsing the row to zero. Visibility is driven by
    emptiness instead, so the reservation always applies. */
 
-/* The native select is kept for keyboard and screen-reader behaviour, but its chrome is
-   replaced with a flag and the same border/radius as the neighbouring phone input, so the
-   pair reads as one control instead of a default dropdown parked next to an input. */
-.booking-phone-row__prefix .booking-field__input {
-    appearance: none;
-    background-color: var(--color-cream-white);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14' viewBox='0 0 20 14'%3E%3Crect width='20' height='14' fill='%23C8102E'/%3E%3Crect x='6' width='2' height='14' fill='%23FFFFFF'/%3E%3Crect x='12' width='2' height='14' fill='%23FFFFFF'/%3E%3Crect y='6' width='20' height='2' fill='%23FFFFFF'/%3E%3C/svg%3E"),
-        linear-gradient(45deg, transparent 50%, var(--color-sage-green) 50%),
-        linear-gradient(135deg, var(--color-sage-green) 50%, transparent 50%);
-    background-position: 0.7rem center, right 0.85rem top 55%, right 0.55rem top 55%;
-    background-repeat: no-repeat;
-    background-size: 20px 14px, 5px 5px, 5px 5px;
-    cursor: pointer;
-    font-weight: 600;
-    padding-left: 2.2rem;
-    padding-right: 1.9rem;
+/* Country + number are one control. The group owns the border, radius and focus ring;
+   both inner controls are borderless, so the flag reads as part of the field rather than
+   an icon inside a box parked next to the number.
+
+   The flag is drawn with gradients rather than an image or a data-URI SVG. The previous
+   20x14 SVG put a 2px cross into a box only 14px tall, so its bars landed on sub-pixel
+   positions and aliased into a smudge at 1x. Gradients let the bar edges sit on the real
+   Danish proportions — 1/5 and 2/5 of the height horizontally, 1/2 vertically — and the
+   element size is chosen so those edges fall on whole pixels at 1x. There is no bitmap and
+   no network request, and it stays crisp because it is resolution-independent. */
+.booking-phone-group {
+    align-items: center;
+    background-color: var(--booking-card);
+    border: 1px solid var(--booking-card-border-strong);
+    border-radius: var(--booking-radius-sm);
+    display: flex;
+    overflow: hidden;
+    position: relative;
 }
 
-.booking-phone-row__prefix .booking-field__input:hover {
+.booking-phone-group .booking-input {
+    background-color: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    /* Room for the flag (1.15rem) plus its left padding, so the text never sits on top
+       of the cross. */
+    padding-left: 2.05rem;
+    padding-right: 0.85rem;
+}
+
+.booking-phone-group .booking-input:focus {
+    box-shadow: none;
+}
+
+.booking-phone-group:focus-within {
+    border-color: var(--color-sage-green);
+    box-shadow: 0 0 0 3px var(--booking-step-accent-soft);
+}
+
+/* The flag itself, as a ::before on the select so it cannot be selected or read out.
+   Layout, top to bottom: the horizontal bar occupies 1/5..2/5 of the height, and the
+   vertical bar is a full-height slice centred at 1/2 of the width. */
+.booking-phone-group__country::before {
+    background-color: #C8102E;
+    background-image:
+        /* horizontal bar, 1/5 to 2/5 of the height */
+        linear-gradient(
+            to bottom,
+            transparent 0 20%,
+            #FFFFFF 20% 40%,
+            transparent 40% 100%),
+        /* vertical bar, full height, centred on 1/2 of the width */
+        linear-gradient(
+            to right,
+            transparent 0 45%,
+            #FFFFFF 45% 55%,
+            transparent 55% 100%);
+    border-radius: 1px;
+    box-shadow: 0 0 0 1px rgba(43, 58, 66, 0.12);
+    content: "";
+    height: 0.8rem;
+    left: 0.8rem;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.15rem;
+    z-index: 1;
+}
+
+.booking-phone-group__country {
+    -webkit-appearance: none;
+    appearance: none;
+    /* Keep the caret: the flag is absolutely positioned, so the padding that made room
+       for it cannot also hold the caret. */
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--color-sage-green) 50%),
+        linear-gradient(135deg, var(--color-sage-green) 50%, transparent 50%);
+    background-position: right 0.75rem top 55%, right 0.45rem top 55%;
+    background-repeat: no-repeat;
+    background-size: 5px 5px, 5px 5px;
+    cursor: pointer;
+    flex: 0 0 auto;
+    font-weight: 600;
+    padding-right: 1.75rem;
+    /* The flag is positioned against the group, so the select must be transparent to it
+       and stretch over the flag's area. */
+    position: relative;
+    width: 5.4rem;
+    z-index: 2;
+}
+
+/* The divider has to out-specify `.booking-phone-group .booking-input { border: 0 }`
+   above (0,2,0 vs 0,1,0), otherwise the reset silently wins and the two halves of the
+   group blur together with no separation. */
+.booking-phone-group .booking-phone-group__number {
+    border-left: 1px solid var(--booking-card-border-strong);
+}
+
+.booking-phone-group__number {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* The select already carries the flag and caret, so the number has no extra inset. */
+    padding-left: 0.85rem;
+}
+
+.booking-phone-group:hover {
     border-color: var(--color-sage-green);
 }
 
@@ -1180,11 +1269,9 @@ img {
     display: grid;
     gap: var(--booking-space-2);
     grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
 }
 
-.booking-phone-row__prefix,
-.booking-phone-row__number {
+.booking-phone-group {
     min-width: 0;
 }
 
@@ -1220,8 +1307,14 @@ img {
 }
 
 @media (max-width: 575.98px) {
-    .booking-phone-row {
-        grid-template-columns: 1fr;
+    /* The country select has a fixed width, so on the narrowest screens the number needs
+       its share back rather than being squeezed to a couple of characters. */
+    .booking-phone-group__country {
+        width: 4.6rem;
+    }
+
+    .booking-phone-group .booking-input {
+        padding-left: 1.95rem;
     }
 }
 
@@ -1356,6 +1449,194 @@ img {
     gap: 0.25rem;
 }
 
+/* Admin month calendar. Proportions deliberately mirror .booking-calendar so the two read
+   as one system, but these selectors are .admin-* only and never touch the booking wizard. */
+.admin-schedule__layout {
+    align-items: start;
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    margin-bottom: 1.5rem;
+}
+
+.admin-calendar {
+    background: var(--color-cream-white);
+    border: 1px solid var(--booking-card-border-strong);
+    border-radius: 16px;
+    padding: 1rem;
+}
+
+.admin-calendar__header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.admin-calendar__title {
+    color: var(--color-dark-slate);
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.admin-calendar__nav {
+    align-items: center;
+    border: 1px solid var(--booking-card-border-strong);
+    border-radius: 999px;
+    color: var(--color-dark-slate);
+    display: inline-flex;
+    font-size: 1.35rem;
+    height: 2.1rem;
+    justify-content: center;
+    line-height: 1;
+    text-decoration: none;
+    width: 2.1rem;
+}
+
+.admin-calendar__nav:hover,
+.admin-calendar__nav:focus-visible {
+    background: var(--color-sage-green);
+    border-color: var(--color-sage-green);
+    color: var(--color-cream-white);
+}
+
+.admin-calendar__grid {
+    border-collapse: separate;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.admin-calendar__grid th,
+.admin-calendar__grid td {
+    padding: 0.15rem;
+    text-align: center;
+}
+
+.admin-calendar__weekday {
+    color: var(--color-dark-slate);
+    font-size: 0.72rem;
+    font-weight: 600;
+    opacity: 0.65;
+    padding-bottom: 0.4rem;
+    text-transform: uppercase;
+}
+
+.admin-calendar__day a,
+.admin-calendar__day > .admin-calendar__day-number {
+    align-items: center;
+    border-radius: 10px;
+    color: var(--color-dark-slate);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    gap: 0.1rem;
+    justify-content: center;
+    min-height: 2.6rem;
+    padding: 0.2rem;
+    text-decoration: none;
+}
+
+.admin-calendar__day a:hover,
+.admin-calendar__day a:focus-visible {
+    background: var(--booking-step-accent-soft);
+    outline-offset: 1px;
+}
+
+/* Adjacent-month days: present for orientation only, and not links in the markup. */
+.admin-calendar__day.is-outside .admin-calendar__day-number,
+.admin-calendar__day.is-outside a {
+    color: var(--color-dark-slate);
+    opacity: 0.3;
+}
+
+.admin-calendar__day.has-bookings a {
+    background: var(--booking-step-accent-soft);
+    font-weight: 600;
+}
+
+/* Every booking on the day cancelled: the day still holds slots, so it is marked but
+   visually recessed rather than presented as active load. */
+.admin-calendar__day.is-all-cancelled a {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--bs-border-color);
+    font-weight: 400;
+}
+
+.admin-calendar__day.is-all-cancelled .admin-calendar__count {
+    background: var(--bs-border-color);
+    color: var(--color-dark-slate);
+}
+
+.admin-calendar__day.is-today a {
+    box-shadow: inset 0 0 0 2px var(--color-sage-green);
+}
+
+.admin-calendar__day.is-selected a {
+    background: var(--color-sage-green);
+    color: var(--color-cream-white);
+}
+
+.admin-calendar__count {
+    background: var(--color-sage-green);
+    border-radius: 999px;
+    color: var(--color-cream-white);
+    font-size: 0.65rem;
+    line-height: 1.4;
+    min-width: 1.1rem;
+    padding: 0 0.3rem;
+}
+
+.admin-calendar__day.is-selected .admin-calendar__count {
+    background: var(--color-dark-slate);
+}
+
+.admin-schedule__day {
+    min-width: 0;
+}
+
+.admin-schedule__selected-day {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.admin-schedule__month-list {
+    border-top: 1px solid var(--bs-border-color);
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+}
+
+.admin-schedule__month-list > summary {
+    align-items: center;
+    color: var(--color-dark-slate);
+    cursor: pointer;
+    display: flex;
+    font-size: 1.1rem;
+    font-weight: 600;
+    gap: 0.5rem;
+}
+
+.admin-schedule__month-day {
+    margin-top: 1.5rem;
+}
+
+.admin-schedule__month-day-title {
+    align-items: center;
+    display: flex;
+    font-size: 1rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-schedule__month-day-title a {
+    color: var(--color-dark-slate);
+    text-decoration: none;
+}
+
+.admin-schedule__month-day-title a:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 767.98px) {
     .account-booking-card {
         align-items: flex-start;
@@ -1378,6 +1659,11 @@ img {
     }
 
     .booking-date-time {
+        grid-template-columns: 1fr;
+    }
+
+    /* Calendar above the day list, matching the customer wizard's stacking order. */
+    .admin-schedule__layout {
         grid-template-columns: 1fr;
     }
 }

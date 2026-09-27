@@ -1,126 +1,196 @@
 @model AdminScheduleViewModel
 @{
     ViewData["Title"] = "Dagens skema";
-    var yesterday = Model.Date.AddDays(-1);
-    var tomorrow = Model.Date.AddDays(1);
+
+    // Monday-first, matching the customer-facing calendar. DayOfWeek in .NET is 0 = Sunday,
+    // so shift by one to put Monday at index 0 and Lø/Sø last.
+    var weekdayLabels = new[] { "Ma", "Ti", "On", "To", "Fr", "Lø", "Sø" };
+    var firstOfMonth = Model.Month;
+    // Monday on or before the 1st, which is where the grid starts.
+    var gridStart = firstOfMonth.AddDays(-(((int)firstOfMonth.DayOfWeek + 6) % 7));
+    var monthLabel = firstOfMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("da-DK"));
+    var previousMonth = firstOfMonth.AddMonths(-1);
+    var nextMonth = firstOfMonth.AddMonths(1);
+    var today = DateTime.Today;
+    var daCulture = new System.Globalization.CultureInfo("da-DK");
 }
 
 <section class="container section-padding">
     <h1 class="section-title">Dagens skema</h1>
 
-    <form method="get" asp-action="Schedule" class="admin-schedule__date">
-        <a class="btn btn-outline-secondary" asp-action="Schedule" asp-route-date="@yesterday.ToString("yyyy-MM-dd")">&larr;</a>
-        <input type="date" class="form-control" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
-        <a class="btn btn-outline-secondary" asp-action="Schedule" asp-route-date="@tomorrow.ToString("yyyy-MM-dd")">&rarr;</a>
-        <button class="btn btn-book rounded-pill px-4" type="submit">Vis</button>
-    </form>
+    @* Month calendar. Server-rendered with plain links rather than a JS grid: the admin
+       calendar is driven by server data, while the customer one is driven by a fetch.
+       Sharing a renderer would mean pushing server data into the fetch-driven grid, so the
+       two share CSS and the Monday-first layout instead. Anchors keep the page usable
+       without JavaScript and keyboard-navigable. *@
+    <div class="admin-schedule__layout">
+        <div class="admin-calendar">
+            <div class="admin-calendar__header">
+                <a class="admin-calendar__nav"
+                   asp-action="Schedule"
+                   asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
+                   asp-route-month="@previousMonth.ToString("yyyy-MM-dd")"
+                   aria-label="Forrige måned">&lsaquo;</a>
+                <span class="admin-calendar__title">@monthLabel</span>
+                <a class="admin-calendar__nav"
+                   asp-action="Schedule"
+                   asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
+                   asp-route-month="@nextMonth.ToString("yyyy-MM-dd")"
+                   aria-label="Næste måned">&rsaquo;</a>
+            </div>
+
+            <table class="admin-calendar__grid">
+                <caption class="visually-hidden">Bookinger i @monthLabel. Vælg en dag for at se dagens skema.</caption>
+                <thead>
+                    <tr>
+                        @foreach (var label in weekdayLabels)
+                        {
+                            <th scope="col" class="admin-calendar__weekday">@label</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                @for (var offset = 0; offset < 42; offset++)
+                {
+                    var current = gridStart.AddDays(offset);
+                    var inMonth = current.Month == firstOfMonth.Month
+                        && current.Year == firstOfMonth.Year;
+                    var isSelected = current == Model.Date;
+                    var isToday = current == today;
+                    var counts = Model.DayCounts.GetValueOrDefault(current);
+                    var dayCount = counts?.Total ?? 0;
+
+                    var classes = "admin-calendar__day";
+                    if (!inMonth)
+                    {
+                        classes += " is-outside";
+                    }
+                    if (isSelected)
+                    {
+                        classes += " is-selected";
+                    }
+                    else if (isToday)
+                    {
+                        classes += " is-today";
+                    }
+                    if (dayCount > 0)
+                    {
+                        classes += " has-bookings";
+                    }
+                    if (counts is not null && counts.Active == 0)
+                    {
+                        classes += " is-all-cancelled";
+                    }
+
+                    <td class="@classes">
+                        @* Days from the neighbouring months are shown for orientation but are
+                           not links: they belong to a different month, and linking them would
+                           change the month under the admin without saying so. *@
+                        @if (inMonth)
+                        {
+                            <a asp-action="Schedule"
+                               asp-route-date="@current.ToString("yyyy-MM-dd")"
+                               asp-route-month="@firstOfMonth.ToString("yyyy-MM-dd")"
+                               aria-current="@(isSelected ? "date" : null)"
+                               aria-label="@current.ToString("d MMMM", daCulture)@(dayCount > 0 ? $", {dayCount} bookinger" : ", ingen bookinger")">
+                                <span class="admin-calendar__day-number">@current.Day</span>
+                                @if (dayCount > 0)
+                                {
+                                    <span class="admin-calendar__count" title="@dayCount bookinger">@dayCount</span>
+                                }
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="admin-calendar__day-number">@current.Day</span>
+                        }
+                    </td>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="admin-schedule__day">
+            <form method="get" asp-action="Schedule" class="admin-schedule__date">
+                <input type="hidden" name="month" value="@Model.Month.ToString("yyyy-MM-dd")" />
+                <label class="visually-hidden" for="adminScheduleDate">Vælg dato</label>
+                <input type="date" id="adminScheduleDate" class="form-control" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                <button class="btn btn-book rounded-pill px-4" type="submit">Vis</button>
+            </form>
+
+            <h2 class="admin-schedule__selected-day">@Model.Date.ToString("dddd d. MMMM yyyy", daCulture)</h2>
+
+            @if (Model.Barbers.Count == 0)
+            {
+                <p>Der er ingen frisører oprettet.</p>
+            }
+            else
+            {
+                foreach (var group in Model.Groups)
+                {
+                    <div class="admin-schedule__barber">
+                        <h3 class="admin-schedule__barber-name">
+                            @group.Barber.Name
+                            <span class="admin-schedule__count">@group.Bookings.Count</span>
+                        </h3>
+
+                        <partial name="_BookingTable" model='new BarberLangeland.ViewModels.AdminBookingTableViewModel
+                        {
+                            Bookings = group.Bookings,
+                            EmptyMessage = "Ingen bookinger denne dag.",
+                            ReturnDate = Model.Date,
+                            ReturnMonth = Model.Month
+                        }' />
+                    </div>
+                }
+            }
+        </div>
+    </div>
 
     <p class="admin-schedule__note">
         En aflyst booking beholder stadig sin plads i kalenderen, så tiden bliver ikke automatisk
         ledig igen. Kontakt kunden direkte, hvis tiden skal frigives.
     </p>
 
-    @if (Model.Groups.Count == 0)
-    {
-        <p>Der er ingen frisører oprettet.</p>
-    }
-    else
-    {
-        foreach (var group in Model.Groups)
+    @* Month at a glance. Collapsed by default so the calendar and the selected day stay the
+       focus; the day list above is what an admin opens the page for. *@
+    <details class="admin-schedule__month-list" open="@(Model.MonthBookings.Count > 0)">
+        <summary>
+            Alle bookinger i @monthLabel
+            <span class="admin-schedule__count">@Model.MonthBookings.Count</span>
+        </summary>
+
+        @if (Model.MonthBookings.Count == 0)
         {
-            <div class="admin-schedule__barber">
-                <h2 class="admin-schedule__barber-name">
-                    @group.Barber.Name
-                    <span class="admin-schedule__count">@group.Bookings.Count</span>
-                </h2>
-
-                @if (group.Bookings.Count == 0)
-                {
-                    <p class="booking-empty-state">Ingen bookinger denne dag.</p>
-                }
-                else
-                {
-                    <table class="admin-schedule__table">
-                        <thead>
-                            <tr>
-                                <th>Tid</th>
-                                <th>Kunde</th>
-                                <th>Behandling</th>
-                                <th>Status</th>
-                                <th>Handling</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var booking in group.Bookings)
-                        {
-                            // A returning customer is never asked for a name, so CustomerName is
-                            // often null — and it was populated with the phone number the
-                            // customer typed ("65432198"), which is not the same formatting as
-                            // the account's stored number ("+4565432198"). Falling back to the
-                            // phone number as the *name* therefore rendered it twice on screen:
-                            // as the name, and again in the phone span below.
-                            //
-                            // The name is simply unknown in that case, and the phone span is
-                            // the reliable identifier, so say so and let it carry the number
-                            // exactly once. A name consisting only of digits and '+' is
-                            // treated as a phone number regardless of formatting, which also
-                            // covers any older row where the fallback was written differently.
-                            var phone = booking.User?.PhoneNumber;
-                            var storedName = booking.CustomerName;
-                            var looksLikePhone = !string.IsNullOrWhiteSpace(storedName)
-                                && storedName.All(c => char.IsDigit(c) || c == '+' || c == ' ');
-                            var hasName = !string.IsNullOrWhiteSpace(storedName) && !looksLikePhone;
-                            var customerName = hasName ? storedName : "Ukendt navn";
-                            var status = booking.IsCancelled ? "Aflyst"
-                                : booking.IsNoShow ? "Mødt ikke op"
-                                : "Bekræftet";
-
-                            <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
-                                <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
-                                <td>
-                                    @customerName
-                                    <span class="admin-schedule__phone">@phone</span>
-                                </td>
-                                <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
-                                <td><span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span></td>
-                                <td class="admin-schedule__actions">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editBookingModal"
-                                            data-booking-id="@booking.Id"
-                                            data-date="@Model.Date.ToString("yyyy-MM-dd")"
-                                            data-time="@booking.BookingTime.ToString(@"HH\:mm")"
-                                            data-barber-id="@booking.BarberId"
-                                            data-service-id="@booking.ServiceId"
-                                            disabled="@(booking.IsCancelled || booking.IsNoShow)">Rediger</button>
-                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
-                                        <input type="hidden" name="id" value="@booking.Id" />
-                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
-                                        <input type="hidden" name="action" value="noshow" />
-                                        <button class="btn btn-sm btn-outline-warning" type="submit" disabled="@booking.IsNoShow">Mødt ikke op</button>
-                                    </form>
-                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
-                                        <input type="hidden" name="id" value="@booking.Id" />
-                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
-                                        <input type="hidden" name="action" value="cancel" />
-                                        <button class="btn btn-sm btn-outline-danger" type="submit" disabled="@booking.IsCancelled">Aflys</button>
-                                    </form>
-                                    @if (booking.IsCancelled || booking.IsNoShow)
-                                    {
-                                        <form method="post" asp-action="UpdateStatus" class="d-inline">
-                                            <input type="hidden" name="id" value="@booking.Id" />
-                                            <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
-                                            <input type="hidden" name="action" value="reopen" />
-                                            <button class="btn btn-sm btn-outline-primary" type="submit">Gendan</button>
-                                        </form>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                }
-            </div>
+            <p class="booking-empty-state">Der er ingen bookinger i @monthLabel.</p>
         }
-    }
+        else
+        {
+            @foreach (var day in Model.MonthDays)
+            {
+                var bookingsForDay = day.OrderBy(b => b.BookingTime).ToList();
+
+                <section class="admin-schedule__month-day">
+                    <h3 class="admin-schedule__month-day-title">
+                        <a asp-action="Schedule"
+                           asp-route-date="@day.Key.ToString("yyyy-MM-dd")"
+                           asp-route-month="@Model.Month.ToString("yyyy-MM-dd")">
+                            @day.Key.ToString("dddd d. MMMM", daCulture)
+                        </a>
+                        <span class="admin-schedule__count">@bookingsForDay.Count</span>
+                    </h3>
+
+                    <partial name="_BookingTable" model='new BarberLangeland.ViewModels.AdminBookingTableViewModel
+                    {
+                        Bookings = bookingsForDay,
+                        EmptyMessage = "Ingen bookinger denne dag.",
+                        ReturnDate = day.Key,
+                        ReturnMonth = Model.Month
+                    }' />
+                </section>
+            }
+        }
+    </details>
 
     @if (TempData["AdminScheduleError"] is string editError && !string.IsNullOrWhiteSpace(editError))
     {
@@ -137,6 +207,9 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" id="editBookingId" />
                     <input type="hidden" name="returnDate" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                    @* Present on the shared modal form, so an edit made from the month list
+                       returns the admin to the month rather than the single-day view. *@
+                    <input type="hidden" name="returnMonth" value="@Model.Month.ToString("yyyy-MM-dd")" />
 
                     <div class="modal-header">
                         <h5 class="modal-title" id="editBookingModalLabel">Rediger booking</h5>

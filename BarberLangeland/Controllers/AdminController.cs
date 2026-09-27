@@ -24,10 +24,18 @@ namespace BarberLangeland.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Schedule(DateTime? date)
+        public async Task<IActionResult> Schedule(DateTime? date, DateTime? month)
         {
             var selectedDate = (date ?? DateTime.Today).Date;
-            var model = new AdminScheduleViewModel { Date = selectedDate };
+            // Default the calendar to the month the selected day falls in, so the plain
+            // ?date=... links that already exist keep working unchanged.
+            var monthStart = new DateTime(
+                (month ?? date ?? DateTime.Today).Year,
+                (month ?? date ?? DateTime.Today).Month,
+                1);
+            var monthEnd = monthStart.AddMonths(1);
+
+            var model = new AdminScheduleViewModel { Date = selectedDate, Month = monthStart };
 
             // The barbers are the grouping axis, so load them all and let the view render
             // empty groups for a barber with nothing booked.
@@ -60,12 +68,49 @@ namespace BarberLangeland.Controllers
                 model.Groups.Add(group);
             }
 
+            // Per-day counts for the whole month in a single round trip, rather than one
+            // query per day. Grouping on BookingTime.Date is translated to
+            // CAST(BookingTime AS date) and aggregated in SQL, so this stays cheap however
+            // busy the month is. The range predicate on BookingTime itself is what lets the
+            // provider use an index on it.
+            var dayCounts = await _context.Bookings
+                .Where(b => b.BookingTime >= monthStart && b.BookingTime < monthEnd)
+                .GroupBy(b => b.BookingTime.Date)
+                .Select(g => new
+                {
+                    Day = g.Key,
+                    Total = g.Count(),
+                    Cancelled = g.Count(b => b.IsCancelled),
+                    NoShow = g.Count(b => b.IsNoShow)
+                })
+                .ToListAsync();
+
+            foreach (var row in dayCounts)
+            {
+                model.DayCounts[row.Day] = new AdminDayCount
+                {
+                    Total = row.Total,
+                    Cancelled = row.Cancelled,
+                    Active = row.Total - row.Cancelled - row.NoShow
+                };
+            }
+
+            // The month list needs the full rows, not just counts — a second single query
+            // over the same range rather than re-reading per day.
+            model.MonthBookings = await _context.Bookings
+                .Include(b => b.Barber)
+                .Include(b => b.Service)
+                .Include(b => b.User)
+                .Where(b => b.BookingTime >= monthStart && b.BookingTime < monthEnd)
+                .OrderBy(b => b.BookingTime)
+                .ToListAsync();
+
             return View(model);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateStatus(int id, string action, DateTime date)
+        public async Task<IActionResult> UpdateStatus(int id, string action, DateTime date, string? returnMonth)
         {
             var booking = await _context.Bookings.FindAsync(id);
 
@@ -107,7 +152,9 @@ namespace BarberLangeland.Controllers
 
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Schedule), new { date = date.Date });
+            // returnMonth is only present when the action came from the month list; it keeps
+            // the admin on the month they were scanning instead of jumping to the day view.
+            return RedirectToAction(nameof(Schedule), MonthRoute(date, returnMonth));
         }
 
         [HttpPost]
@@ -118,7 +165,8 @@ namespace BarberLangeland.Controllers
             int barberId,
             int serviceId,
             TimeSpan time,
-            string? returnDate)
+            string? returnDate,
+            string? returnMonth)
         {
             var booking = await _context.Bookings.FindAsync(id);
             if (booking == null)
@@ -140,7 +188,8 @@ namespace BarberLangeland.Controllers
             {
                 TempData["AdminScheduleError"] =
                     "Bookingen er aflyst eller markeret som mødt ikke op. Gendan den først, hvis du vil ændre den.";
-                return RedirectToAction(nameof(Schedule), new { date = ResolveRedirectDate(returnDate).ToString("yyyy-MM-dd") });
+                return RedirectToAction(nameof(Schedule),
+                    MonthRoute(ResolveRedirectDate(returnDate), returnMonth));
             }
 
             var newStart = date.Date.Add(time);
@@ -174,7 +223,7 @@ namespace BarberLangeland.Controllers
                 TempData["AdminScheduleError"] =
                     "Tidspunktet er ikke ledigt for den valgte frisør og behandling.";
                 await transaction.RollbackAsync();
-                return RedirectToAction(nameof(Schedule), new { date = redirectDate.ToString("yyyy-MM-dd") });
+                return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
             }
 
             booking.BookingTime = newStart;
@@ -187,7 +236,24 @@ namespace BarberLangeland.Controllers
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return RedirectToAction(nameof(Schedule), new { date = redirectDate.ToString("yyyy-MM-dd") });
+            return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
+        }
+
+        // Both redirect helpers keep the admin where they were. date is the day being viewed
+        // and month is the calendar page; when a form came from the month list it posts
+        // returnMonth so the redirect does not drop back to the single-day view.
+        private static Dictionary<string, object?> MonthRoute(DateTime date, string? returnMonth)
+        {
+            var route = new Dictionary<string, object?> { ["date"] = date.ToString("yyyy-MM-dd") };
+
+            if (DateTime.TryParse(returnMonth, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed))
+            {
+                route["month"] = new DateTime(parsed.Year, parsed.Month, 1)
+                    .ToString("yyyy-MM-dd");
+            }
+
+            return route;
         }
 
         // returnDate comes back from the form as a free-form string. Fall back to the date

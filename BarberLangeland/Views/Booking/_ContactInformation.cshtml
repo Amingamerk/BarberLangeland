@@ -20,25 +20,31 @@
     <fieldset class="booking-contact-grid" data-contact-fields>
         <legend class="visually-hidden">Kontaktoplysninger</legend>
 
-        @* Phone is the only field asked for up front; everything else is revealed after. *@
+        @* Phone is the only field asked for up front; everything else is revealed after.
+
+           The country select and the number input are wrapped in a single bordered group so
+           they read as one control. The select keeps the same .booking-input/.booking-label
+           classes as _BookingField, which is what gives it the right height, font and
+           background — the group then supplies the single outer border and the caret, and
+           the individual controls go borderless. Styling the select with one-off classes
+           instead left it on default browser chrome, which is what made the old flag look
+           like an icon sitting inside its own little box. *@
         <div class="booking-phone-row" data-phone-row>
-            <div class="booking-phone-row__prefix">
-                <label class="booking-field__label" for="PhoneCountryCode">Land</label>
-                <select class="booking-field__input" id="PhoneCountryCode" name="PhoneCountryCode"
+            <div class="booking-phone-group">
+                <label class="visually-hidden" for="PhoneCountryCode">Land</label>
+                <select class="booking-input booking-phone-group__country"
+                        id="PhoneCountryCode" name="PhoneCountryCode"
                         data-country-select autocomplete="country">
                     <option value="DK" selected>+45</option>
                 </select>
-            </div>
-            <div class="booking-phone-row__number">
-                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-                {
-                    Id = "Phone",
-                    Label = "Telefonnummer",
-                    Type = "tel",
-                    Placeholder = "12 34 56 78",
-                    AutoComplete = "tel",
-                    Value = Model.Phone
-                }' />
+                <label class="visually-hidden" for="Phone">Telefonnummer</label>
+                <input class="booking-input booking-phone-group__number"
+                       id="Phone"
+                       name="Phone"
+                       type="tel"
+                       placeholder="12 34 56 78"
+                       autocomplete="tel"
+                       value="@Model.Phone" />
             </div>
         </div>
         @* These two sit between the phone field and the action buttons. They are grid
