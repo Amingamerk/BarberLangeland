@@ -53,9 +53,24 @@
                         <tbody>
                         @foreach (var booking in group.Bookings)
                         {
-                            var customerName = string.IsNullOrWhiteSpace(booking.CustomerName)
-                                ? booking.User?.PhoneNumber
-                                : booking.CustomerName;
+                            // A returning customer is never asked for a name, so CustomerName is
+                            // often null — and it was populated with the phone number the
+                            // customer typed ("65432198"), which is not the same formatting as
+                            // the account's stored number ("+4565432198"). Falling back to the
+                            // phone number as the *name* therefore rendered it twice on screen:
+                            // as the name, and again in the phone span below.
+                            //
+                            // The name is simply unknown in that case, and the phone span is
+                            // the reliable identifier, so say so and let it carry the number
+                            // exactly once. A name consisting only of digits and '+' is
+                            // treated as a phone number regardless of formatting, which also
+                            // covers any older row where the fallback was written differently.
+                            var phone = booking.User?.PhoneNumber;
+                            var storedName = booking.CustomerName;
+                            var looksLikePhone = !string.IsNullOrWhiteSpace(storedName)
+                                && storedName.All(c => char.IsDigit(c) || c == '+' || c == ' ');
+                            var hasName = !string.IsNullOrWhiteSpace(storedName) && !looksLikePhone;
+                            var customerName = hasName ? storedName : "Ukendt navn";
                             var status = booking.IsCancelled ? "Aflyst"
                                 : booking.IsNoShow ? "Mødt ikke op"
                                 : "Bekræftet";
@@ -64,7 +79,7 @@
                                 <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
                                 <td>
                                     @customerName
-                                    <span class="admin-schedule__phone">@booking.User?.PhoneNumber</span>
+                                    <span class="admin-schedule__phone">@phone</span>
                                 </td>
                                 <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
                                 <td><span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span></td>
