@@ -20,9 +20,16 @@
         <div class="booking-date-time" data-time-selection>
             @* The calendar is the single source of truth for BookingDate. The whole widget
                is rendered client-side once availability for the visible month has been
-               fetched; the hidden inputs keep model binding intact. *@
-            <div class="booking-date-card" data-booking-availability>
-                <p class="booking-empty-state">Vælg en behandling for at se ledige tider.</p>
+               fetched; the hidden inputs keep model binding intact.
+
+               data-time-panels is the GRID CONTAINER: the client appends the calendar and
+               the slot panel here as its two direct children so they sit side by side.
+               The hidden inputs are deliberately kept outside it - as grid children they
+               would occupy grid cells and shift the calendar off the first column. *@
+            <div class="booking-date-time__panels" data-time-panels>
+                <div class="booking-date-card" data-booking-availability>
+                    <p class="booking-empty-state">Vælg en behandling for at se ledige tider.</p>
+                </div>
             </div>
             @* asp-for renders the value in the current culture format, which the client's
                strict parseIso rejects. Emit plain yyyy-MM-dd so a validation-error
