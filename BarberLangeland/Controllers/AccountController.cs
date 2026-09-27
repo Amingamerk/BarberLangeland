@@ -75,9 +75,19 @@ namespace BarberLangeland.Controllers
 
             await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
 
+            // An explicit returnUrl always wins, so a sign-in triggered mid-booking lands the
+            // customer back in the flow they came from. The role-based default only applies
+            // when there is no returnUrl to honour.
             if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
             {
                 return LocalRedirect(returnUrl);
+            }
+
+            // An admin works in the schedule, not in the customer booking list, and the
+            // customer-facing nav does not even offer "Mine bookinger" to an admin.
+            if (await _userManager.IsInRoleAsync(user, IdentitySeeder.AdminRole))
+            {
+                return RedirectToAction("Schedule", "Admin");
             }
 
             return RedirectToAction(nameof(MyBookings));

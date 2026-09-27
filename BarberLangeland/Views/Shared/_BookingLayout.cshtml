@@ -15,7 +15,17 @@
                 <img src="~/images/frisør-logo.png" alt="" />
                 <span>Frisør Langeland</span>
             </a>
-            <a class="booking-login" asp-area="Identity" asp-page="/Account/Login">Login</a>
+            @* Must point at AccountController.Login, not the scaffolded Identity UI: usernames
+               here are opaque "user_<guid>" values, so the Identity page's username lookup
+               never matches and no one can sign in through it. Hidden entirely once signed in,
+               so an authenticated customer is never invited to log in again. *@
+            @if (User?.Identity?.IsAuthenticated != true)
+            {
+                <a class="booking-login"
+                   asp-controller="Account"
+                   asp-action="Login"
+                   asp-route-returnUrl="@Context.Request.Path@Context.Request.QueryString">Login</a>
+            }
         </div>
     </header>
 
