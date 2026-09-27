@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using BarberLangeland.Models;
 using BarberLangeland.Data;
 using BarberLangeland.Services;
+using BarberLangeland.ViewModels;
 
 [Authorize(Roles = IdentitySeeder.AdminRole)]
 public class BarbersController : Controller
@@ -22,24 +23,6 @@ public class BarbersController : Controller
         return View(await _context.Barbers.ToListAsync());
     }
 
-    // GET: BARBERS/Details/5
-    public async Task<IActionResult> Details(int? id)
-    {
-        if (id == null)
-        {
-            return NotFound();
-        }
-
-        var barber = await _context.Barbers
-            .FirstOrDefaultAsync(m => m.Id == id);
-        if (barber == null)
-        {
-            return NotFound();
-        }
-
-        return View(barber);
-    }
-
     // GET: BARBERS/Create
     public IActionResult Create()
     {
@@ -55,7 +38,7 @@ public class BarbersController : Controller
     {
         if (ModelState.IsValid)
         {
-            _context.Add(barber);
+            _context.Add(Normalize(barber));
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
@@ -94,7 +77,7 @@ public class BarbersController : Controller
         {
             try
             {
-                _context.Update(barber);
+                _context.Update(Normalize(barber));
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -128,7 +111,7 @@ public class BarbersController : Controller
             return NotFound();
         }
 
-        return View(barber);
+        return View(await BuildDeleteModelAsync(barber));
     }
 
     // POST: BARBERS/Delete/5
@@ -137,11 +120,21 @@ public class BarbersController : Controller
     public async Task<IActionResult> DeleteConfirmed(int? id)
     {
         var barber = await _context.Barbers.FindAsync(id);
-        if (barber != null)
+        if (barber == null)
         {
-            _context.Barbers.Remove(barber);
+            return NotFound();
         }
 
+        var model = await BuildDeleteModelAsync(barber);
+        if (!model.CanDelete)
+        {
+            ModelState.AddModelError(string.Empty,
+                $"{barber.Name} har {model.BookingCount} bookinger og kan derfor ikke slettes. " +
+                "Fjern eller flyt bookingerne først.");
+            return View(model);
+        }
+
+        _context.Barbers.Remove(barber);
         await _context.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
@@ -149,5 +142,21 @@ public class BarbersController : Controller
     private bool BarberExists(int? id)
     {
         return _context.Barbers.Any(e => e.Id == id);
+    }
+
+    // Model binding turns a blank ImagePath text field into null, but the column is NOT NULL.
+    private static Barber Normalize(Barber barber)
+    {
+        barber.ImagePath ??= string.Empty;
+        return barber;
+    }
+
+    private async Task<BarberDeleteViewModel> BuildDeleteModelAsync(Barber barber)
+    {
+        return new BarberDeleteViewModel
+        {
+            Barber = barber,
+            BookingCount = await _context.Bookings.CountAsync(b => b.BarberId == barber.Id)
+        };
     }
 }

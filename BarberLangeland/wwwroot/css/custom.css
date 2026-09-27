@@ -938,6 +938,23 @@ img {
     width: 100%;
 }
 
+/* "Næste" is the secondary step action and "Bekræft booking" the primary one. They carry
+   the same box in the flow, so they must measure the same: the primary is width-constrained
+   and the secondary previously inherited the base padding only, which made the two steps
+   look like different buttons as the user moved down the wizard. */
+.booking-button--secondary {
+    background-color: transparent;
+    border-color: var(--color-sage-green);
+    color: var(--color-sage-green);
+    margin-top: var(--booking-space-4);
+    width: 100%;
+}
+
+.booking-button--secondary:hover {
+    background-color: var(--color-sage-green);
+    color: var(--color-cream-white);
+}
+
 .booking-button--primary:hover {
     background-color: #6B8775;
     color: var(--color-cream-white);
@@ -1116,6 +1133,46 @@ img {
     display: none;
 }
 
+/* An inline error in a grid step normally adds a row and shoves the action buttons down,
+   which reads as a broken step rather than a validation message. These slots always occupy
+   one line, so the buttons keep their position whether or not a message is showing.
+   1.55em matches the rendered height of a single-line message (0.82rem font, 1.35
+   line-height), which is what stops the row growing when text actually appears. */
+.booking-validation--reserved {
+    grid-column: 1 / -1;
+    min-height: 1.55em;
+}
+
+.booking-validation--reserved:empty {
+    display: block;
+}
+
+/* These slots are never marked [hidden] — Bootstrap's [hidden] rule is !important and
+   would win over the reservation, collapsing the row to zero. Visibility is driven by
+   emptiness instead, so the reservation always applies. */
+
+/* The native select is kept for keyboard and screen-reader behaviour, but its chrome is
+   replaced with a flag and the same border/radius as the neighbouring phone input, so the
+   pair reads as one control instead of a default dropdown parked next to an input. */
+.booking-phone-row__prefix .booking-field__input {
+    appearance: none;
+    background-color: var(--color-cream-white);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14' viewBox='0 0 20 14'%3E%3Crect width='20' height='14' fill='%23C8102E'/%3E%3Crect x='6' width='2' height='14' fill='%23FFFFFF'/%3E%3Crect x='12' width='2' height='14' fill='%23FFFFFF'/%3E%3Crect y='6' width='20' height='2' fill='%23FFFFFF'/%3E%3C/svg%3E"),
+        linear-gradient(45deg, transparent 50%, var(--color-sage-green) 50%),
+        linear-gradient(135deg, var(--color-sage-green) 50%, transparent 50%);
+    background-position: 0.7rem center, right 0.85rem top 55%, right 0.55rem top 55%;
+    background-repeat: no-repeat;
+    background-size: 20px 14px, 5px 5px, 5px 5px;
+    cursor: pointer;
+    font-weight: 600;
+    padding-left: 2.2rem;
+    padding-right: 1.9rem;
+}
+
+.booking-phone-row__prefix .booking-field__input:hover {
+    border-color: var(--color-sage-green);
+}
+
 /* Step 4 is phone-first: the number sits next to a small country selector and the
    name/email/password block is revealed underneath once the lookup returns. */
 .booking-phone-row {
@@ -1170,38 +1227,70 @@ img {
 
 /* Mine bookinger + administration. These are page-specific, not booking-flow tokens,
    so they stay at the end of the file and only style their own class names. */
+/* Sage accent bar on the leading edge keeps the date/time block visually anchored, so the
+   three zones (when / what / status) separate without needing heavy borders. */
 .account-booking-card {
     align-items: center;
     background: var(--color-cream-white);
     border: 1px solid var(--bs-border-color);
-    border-radius: 12px;
+    border-left: 4px solid var(--color-sage-green);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(43, 58, 66, 0.06);
     display: flex;
     gap: 1.5rem;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
-    padding: 1rem 1.25rem;
+    margin-bottom: 0.85rem;
+    padding: 1.15rem 1.4rem;
+    transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.account-booking-card:hover {
+    box-shadow: 0 4px 12px rgba(43, 58, 66, 0.1);
+    transform: translateY(-1px);
 }
 
 .account-booking-card__when {
     display: flex;
     flex-direction: column;
-    min-width: 11rem;
+    min-width: 12rem;
+    padding-right: 1.5rem;
+}
+
+/* The time is the scanning target, so it gets the size and weight and the weekday drops
+   back to a muted line above it. */
+.account-booking-card__when strong {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.account-booking-card__when span {
+    color: var(--color-sage-green);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .account-booking-card__what {
     display: flex;
     flex: 1;
     flex-direction: column;
+    gap: 0.15rem;
 }
 
 .account-booking-card__service {
+    font-size: 1.05rem;
     font-weight: 600;
 }
 
 .account-booking-card__meta {
     color: var(--color-dark-slate);
     font-size: 0.85rem;
-    opacity: 0.8;
+    opacity: 0.75;
+}
+
+.account-booking-card__status {
+    flex-shrink: 0;
 }
 
 .admin-schedule__date {
@@ -1462,4 +1551,144 @@ img {
 .account-login-card .form-control:focus {
     border-color: var(--color-sage-green);
     box-shadow: 0 0 0 0.2rem rgba(124, 152, 133, 0.25);
+}
+
+/* ---- Admin: barber CRUD ---- */
+
+.admin-barbers__header {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+}
+
+.admin-barbers__header .section-title {
+    margin-bottom: 0;
+}
+
+.admin-barbers__grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.admin-barbers__card {
+    background: var(--color-cream-white);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(43, 58, 66, 0.06);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.admin-barbers__photo {
+    align-items: center;
+    aspect-ratio: 4 / 3;
+    background: var(--color-warm-sand);
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    width: 100%;
+}
+
+.admin-barbers__photo img {
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.admin-barbers__initials {
+    color: var(--color-sage-green);
+    font-size: 3rem;
+    font-weight: 700;
+}
+
+.admin-barbers__body {
+    flex: 1;
+    padding: 1rem 1.15rem 0.5rem;
+}
+
+.admin-barbers__name {
+    color: var(--color-dark-slate);
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+
+.admin-barbers__title {
+    color: var(--color-dark-slate);
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    opacity: 0.75;
+}
+
+.admin-barbers__actions {
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.85rem 1.15rem;
+}
+
+.admin-barbers__actions .btn {
+    flex: 1;
+}
+
+.admin-barbers__card--confirm {
+    padding: 1.5rem;
+}
+
+.admin-barbers__confirm-text {
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-barbers__confirm-hint {
+    color: var(--color-dark-slate);
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    opacity: 0.75;
+}
+
+.admin-barbers__form {
+    background: var(--color-cream-white);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(43, 58, 66, 0.06);
+    max-width: 520px;
+    padding: 1.75rem;
+}
+
+.admin-barbers__form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.admin-barbers__form-actions .btn-book {
+    border: 0;
+}
+
+/* The delete form is inline, so it must not stretch its button across the action row. */
+.admin-barbers__form-actions form {
+    display: inline-flex;
+}
+
+/* ---- Admin: schedule edit modal ---- */
+
+.admin-schedule__error {
+    margin-top: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .admin-barbers__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-barbers__form {
+        padding: 1.25rem;
+    }
 }

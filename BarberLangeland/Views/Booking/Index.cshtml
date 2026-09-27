@@ -280,8 +280,11 @@
                 if (!phoneError) {
                     return;
                 }
+                // Text content only — the element permanently occupies its reserved line so
+                // the action buttons below never move when a message appears or clears.
+                // Toggling [hidden] instead would collapse the slot, because Bootstrap's
+                // [hidden] rule is !important and cannot be overridden by the reservation.
                 phoneError.textContent = message || "";
-                phoneError.hidden = !message;
             }
 
             // Progressive reveal: ask the server whether the number is registered, then show

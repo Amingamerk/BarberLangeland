@@ -9,12 +9,17 @@ namespace BarberLangeland.Services
         /// <paramref name="startDate"/>. The default of 2 keeps today/tomorrow behaviour for
         /// existing callers; the booking calendar requests a full 42-day window so every
         /// visible cell of the month grid has real data behind it.
+        ///
+        /// <paramref name="excludeBookingId"/> leaves a single booking out of the occupancy
+        /// calculation. Admin rescheduling needs this, otherwise a booking blocks its own
+        /// current slot and cannot be saved back to where it already is.
         /// </summary>
         Task<List<BookingDayViewModel>> GetAvailableDaysAsync(
             int barberId,
             int serviceId,
             DateTime startDate,
-            int dayCount = 2);
+            int dayCount = 2,
+            int? excludeBookingId = null);
 
         /// <summary>
         /// Returns the opening hours for a full week so the UI can display the same

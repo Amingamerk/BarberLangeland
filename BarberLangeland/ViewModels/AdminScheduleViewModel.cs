@@ -9,6 +9,9 @@ namespace BarberLangeland.ViewModels
 
         public List<Barber> Barbers { get; set; } = [];
 
+        /// <summary>Services the edit modal offers, so admin can change the treatment too.</summary>
+        public List<Service> Services { get; set; } = [];
+
         public List<BarberScheduleGroup> Groups { get; set; } = [];
     }
 
