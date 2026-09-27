@@ -1,0 +1,97 @@
+@using BarberLangeland.Models
+@model BarberLangeland.ViewModels.AdminBookingTableViewModel
+
+@* One table of bookings, shared by the selected-day list and the month-at-a-glance list.
+   Both need the same status buttons and the same edit-modal trigger, so the row markup
+   lives here rather than being written twice — a divergence between the two copies is
+   exactly the kind of bug that is invisible until one of them is edited.
+
+   returnMonth is included on every form so an action taken from the month list redirects
+   back to the month the admin was scanning, not to the single-day view. *@
+
+@if (Model.Bookings.Count == 0)
+{
+    <p class="booking-empty-state">@Model.EmptyMessage</p>
+}
+else
+{
+    <table class="admin-schedule__table">
+        <thead>
+            <tr>
+                <th scope="col">Tid</th>
+                <th scope="col">Kunde</th>
+                <th scope="col">Behandling</th>
+                <th scope="col">Status</th>
+                <th scope="col">Handling</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var booking in Model.Bookings)
+        {
+                // A returning customer is never asked for a name, so CustomerName is often
+                // null — and it was populated with the phone number the customer typed, which
+                // is not the same formatting as the account's stored number. Falling back to
+                // the phone number as the *name* therefore rendered it twice: as the name,
+                // and again in the phone span. The name is simply unknown in that case, and
+                // the phone span is the reliable identifier, so say so and let it carry the
+                // number exactly once. A name made only of digits and '+' is treated as a
+                // phone number regardless of formatting, covering older rows too.
+                var phone = booking.User?.PhoneNumber;
+                var storedName = booking.CustomerName;
+                var looksLikePhone = !string.IsNullOrWhiteSpace(storedName)
+                    && storedName.All(c => char.IsDigit(c) || c == '+' || c == ' ');
+                var customerName = !string.IsNullOrWhiteSpace(storedName) && !looksLikePhone
+                    ? storedName
+                    : "Ukendt navn";
+                var status = booking.IsCancelled ? "Aflyst"
+                    : booking.IsNoShow ? "Mødt ikke op"
+                    : "Bekræftet";
+
+                <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
+                    <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
+                    <td>
+                        @customerName
+                        <span class="admin-schedule__phone">@phone</span>
+                    </td>
+                    <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
+                    <td>
+                        <span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span>
+                    </td>
+                    <td class="admin-schedule__actions">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editBookingModal"
+                                data-booking-id="@booking.Id"
+                                data-date="@booking.BookingTime.ToString("yyyy-MM-dd")"
+                                data-time="@booking.BookingTime.ToString(@"HH\:mm")"
+                                data-barber-id="@booking.BarberId"
+                                data-service-id="@booking.ServiceId"
+                                disabled="@(booking.IsCancelled || booking.IsNoShow)">Rediger</button>
+                        <form method="post" asp-action="UpdateStatus" class="d-inline">
+                            <input type="hidden" name="id" value="@booking.Id" />
+                            <input type="hidden" name="date" value="@Model.ReturnDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="returnMonth" value="@Model.ReturnMonth.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="action" value="noshow" />
+                            <button class="btn btn-sm btn-outline-warning" type="submit" disabled="@booking.IsNoShow">Mødt ikke op</button>
+                        </form>
+                        <form method="post" asp-action="UpdateStatus" class="d-inline">
+                            <input type="hidden" name="id" value="@booking.Id" />
+                            <input type="hidden" name="date" value="@Model.ReturnDate.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="returnMonth" value="@Model.ReturnMonth.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="action" value="cancel" />
+                            <button class="btn btn-sm btn-outline-danger" type="submit" disabled="@booking.IsCancelled">Aflys</button>
+                        </form>
+                        @if (booking.IsCancelled || booking.IsNoShow)
+                        {
+                            <form method="post" asp-action="UpdateStatus" class="d-inline">
+                                <input type="hidden" name="id" value="@booking.Id" />
+                                <input type="hidden" name="date" value="@Model.ReturnDate.ToString("yyyy-MM-dd")" />
+                                <input type="hidden" name="returnMonth" value="@Model.ReturnMonth.ToString("yyyy-MM-dd")" />
+                                <input type="hidden" name="action" value="reopen" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Gendan</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+        }
+        </tbody>
+    </table>
+}
