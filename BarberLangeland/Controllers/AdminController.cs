@@ -197,6 +197,18 @@ namespace BarberLangeland.Controllers
 
             var redirectDate = ResolveRedirectDate(returnDate);
 
+            // The availability service never offers a slot that has already passed, so moving a
+            // booking into the past fails the same check as a genuinely occupied slot. Check the
+            // clock here so the two cases report different reasons — otherwise the admin reads
+            // "ikke ledigt" and goes looking for a phantom conflict that does not exist. Today's
+            // remaining slots are still offered, so the comparison is against the full timestamp.
+            if (newStart <= DateTime.Now)
+            {
+                TempData["AdminScheduleError"] =
+                    "Du kan ikke flytte en booking til et tidspunkt der er overstået.";
+                return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
+            }
+
             // Serializable, mirroring BookingService.CreateBookingAsync: the availability check
             // and the write below form one check-then-write sequence, and without this two
             // concurrent edits (or a public booking landing mid-flight) can both observe the
