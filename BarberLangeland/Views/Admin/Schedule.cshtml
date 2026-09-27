@@ -50,9 +50,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                @for (var offset = 0; offset < 42; offset++)
+                @* One <tr> per week of 7. The cells must be wrapped in rows: with no row
+                   elements the browser sees a single implicit row, so table-layout: fixed
+                   collapses all seven columns to the width of one and the whole grid stacks
+                   up on one line. *@
+                @for (var week = 0; week < 6; week++)
                 {
-                    var current = gridStart.AddDays(offset);
+                    <tr>
+                    @for (var weekday = 0; weekday < 7; weekday++)
+                    {
+                        var offset = (week * 7) + weekday;
+                        var current = gridStart.AddDays(offset);
                     var inMonth = current.Month == firstOfMonth.Month
                         && current.Year == firstOfMonth.Year;
                     var isSelected = current == Model.Date;
@@ -105,6 +113,8 @@
                             <span class="admin-calendar__day-number">@current.Day</span>
                         }
                     </td>
+                    }
+                    </tr>
                 }
                 </tbody>
             </table>
