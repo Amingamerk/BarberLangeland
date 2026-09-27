@@ -1,9 +1,12 @@
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BarberLangeland.Models;
 using BarberLangeland.Data;
+using BarberLangeland.Services;
 
+[Authorize(Roles = IdentitySeeder.AdminRole)]
 public class BarbersController : Controller
 {
     private readonly ApplicationDbContext _context;
