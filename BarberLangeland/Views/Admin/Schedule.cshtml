@@ -53,9 +53,9 @@
                         <tbody>
                         @foreach (var booking in group.Bookings)
                         {
-                            var customerName = string.IsNullOrWhiteSpace(booking.Description)
+                            var customerName = string.IsNullOrWhiteSpace(booking.CustomerName)
                                 ? booking.User?.PhoneNumber
-                                : booking.Description;
+                                : booking.CustomerName;
                             var status = booking.IsCancelled ? "Aflyst"
                                 : booking.IsNoShow ? "Mødt ikke op"
                                 : "Bekræftet";

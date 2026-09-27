@@ -2,9 +2,9 @@
 @{
     // A returning customer is not asked for a name in the phone-first flow, so fall back to
     // the phone number on file rather than rendering a blank.
-    var customerName = string.IsNullOrWhiteSpace(Model.Description)
+    var customerName = string.IsNullOrWhiteSpace(Model.CustomerName)
         ? (Model.User?.PhoneNumber ?? "Kunde")
-        : Model.Description;
+        : Model.CustomerName;
 }
 
 <div class="account-booking-card">
