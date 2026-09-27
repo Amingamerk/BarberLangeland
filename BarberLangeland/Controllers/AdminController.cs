@@ -1,3 +1,5 @@
+using System.Data;
+using System.Globalization;
 using BarberLangeland.Data;
 using BarberLangeland.Models;
 using BarberLangeland.Services;
@@ -131,8 +133,27 @@ namespace BarberLangeland.Controllers
                 return BadRequest();
             }
 
+            // A cancelled or no-show booking is not an active appointment. Moving one would
+            // silently relocate a slot that still renders as Aflyst, so require the admin to
+            // use Gendan first — that restores the booking and makes it editable again.
+            if (booking.IsCancelled || booking.IsNoShow)
+            {
+                TempData["AdminScheduleError"] =
+                    "Bookingen er aflyst eller markeret som mødt ikke op. Gendan den først, hvis du vil ændre den.";
+                return RedirectToAction(nameof(Schedule), new { date = ResolveRedirectDate(returnDate).ToString("yyyy-MM-dd") });
+            }
+
             var newStart = date.Date.Add(time);
             var newDuration = TimeSpan.FromMinutes(service.DurationMinutes);
+
+            var redirectDate = ResolveRedirectDate(returnDate);
+
+            // Serializable, mirroring BookingService.CreateBookingAsync: the availability check
+            // and the write below form one check-then-write sequence, and without this two
+            // concurrent edits (or a public booking landing mid-flight) can both observe the
+            // slot as free and both commit, double-booking the barber.
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             // Reuse the booking flow's own availability rules rather than duplicating the
             // opening-hours and overlap logic here. The booking being moved is excluded so it
@@ -152,7 +173,8 @@ namespace BarberLangeland.Controllers
             {
                 TempData["AdminScheduleError"] =
                     "Tidspunktet er ikke ledigt for den valgte frisør og behandling.";
-                return RedirectToAction(nameof(Schedule), new { date = returnDate ?? date.ToString("yyyy-MM-dd") });
+                await transaction.RollbackAsync();
+                return RedirectToAction(nameof(Schedule), new { date = redirectDate.ToString("yyyy-MM-dd") });
             }
 
             booking.BookingTime = newStart;
@@ -163,8 +185,19 @@ namespace BarberLangeland.Controllers
             booking.Duration = newDuration;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
-            return RedirectToAction(nameof(Schedule), new { date = returnDate ?? date.ToString("yyyy-MM-dd") });
+            return RedirectToAction(nameof(Schedule), new { date = redirectDate.ToString("yyyy-MM-dd") });
+        }
+
+        // returnDate comes back from the form as a free-form string. Fall back to the date
+        // being edited to, then to today, rather than trusting the posted value.
+        private static DateTime ResolveRedirectDate(string? returnDate)
+        {
+            return DateTime.TryParse(returnDate, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var parsed)
+                ? parsed.Date
+                : DateTime.Today;
         }
     }
 }

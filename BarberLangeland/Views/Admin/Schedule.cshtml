@@ -74,7 +74,8 @@
                                             data-date="@Model.Date.ToString("yyyy-MM-dd")"
                                             data-time="@booking.BookingTime.ToString(@"HH\:mm")"
                                             data-barber-id="@booking.BarberId"
-                                            data-service-id="@booking.ServiceId">Rediger</button>
+                                            data-service-id="@booking.ServiceId"
+                                            disabled="@(booking.IsCancelled || booking.IsNoShow)">Rediger</button>
                                     <form method="post" asp-action="UpdateStatus" class="d-inline">
                                         <input type="hidden" name="id" value="@booking.Id" />
                                         <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
