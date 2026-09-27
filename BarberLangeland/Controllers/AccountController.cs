@@ -35,8 +35,17 @@ namespace BarberLangeland.Controllers
         /// </summary>
         [AllowAnonymous]
         [HttpGet]
-        public IActionResult Login(string? returnUrl = null)
+        public async Task<IActionResult> Login(string? returnUrl = null)
         {
+            // Reached while already signed in: a bookmark, a stale cached page, or the back
+            // button. Showing the form again would be confusing and pointless, so send the
+            // user to wherever a fresh sign-in would have taken them.
+            var signedInUser = await _userManager.GetUserAsync(User);
+            if (signedInUser != null)
+            {
+                return await PostSignInRedirect(signedInUser, returnUrl);
+            }
+
             ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
@@ -75,6 +84,15 @@ namespace BarberLangeland.Controllers
 
             await _signInManager.SignInAsync(user, isPersistent: model.RememberMe);
 
+            return await PostSignInRedirect(user, returnUrl);
+        }
+
+        /// <summary>
+        /// Where a freshly authenticated user should land. Shared by the POST action and by the
+        /// GET action's already-signed-in shortcut, so the two can never drift apart.
+        /// </summary>
+        private async Task<IActionResult> PostSignInRedirect(ApplicationUser user, string? returnUrl)
+        {
             // An explicit returnUrl always wins, so a sign-in triggered mid-booking lands the
             // customer back in the flow they came from. The role-based default only applies
             // when there is no returnUrl to honour.

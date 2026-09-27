@@ -27,6 +27,22 @@ namespace BarberLangeland
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders()
                 .AddDefaultUI();
+
+            // Without this the cookie handler keeps its built-in defaults, so a Challenge from
+            // any [Authorize] action sends the visitor to the Identity.UI Razor Page at
+            // /Identity/Account/Login. That page signs in through PasswordSignInAsync, which
+            // does a username lookup - and usernames here are opaque "user_<guid>" values, so
+            // the lookup never matches and the page is a dead end. Pointing the challenge at
+            // AccountController.Login is what makes [Authorize] sign-in actually possible.
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.LoginPath = "/Account/Login";
+                options.LogoutPath = "/Account/Logout";
+                // No AccessDenied view exists; the login page is the only sensible target, and
+                // it states plainly what went wrong if we add one later.
+                options.AccessDeniedPath = "/Account/Login";
+            });
+
             builder.Services.AddControllersWithViews();
             // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
             // built-in Identity UI is served from Razor Pages.
