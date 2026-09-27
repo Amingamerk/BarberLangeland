@@ -72,7 +72,9 @@ namespace BarberLangeland.ViewModels
 
         public string Title { get; set; } = string.Empty;
 
-        public string ImagePath { get; set; } = string.Empty;
+        // Nullable to match Barber.ImagePath: a barber may legitimately have no photo,
+        // and the selector already falls back to the salon logo for a blank path.
+        public string? ImagePath { get; set; }
     }
 
     public class ServiceOptionViewModel
