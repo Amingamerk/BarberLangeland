@@ -155,7 +155,7 @@ namespace BarberLangeland.Controllers
                 Service = service,
                 // A returning customer never typed a name, so there is nothing to store here.
                 // The views fall back to the phone number rather than misusing the email.
-                Description = model.Name.Trim(),
+                Description = model.Name?.Trim() ?? model.Phone,
                 UserId = user.Id,
                 User = user
             };
@@ -169,6 +169,12 @@ namespace BarberLangeland.Controllers
 
             model.BookingConfirmed = true;
             model.ConfirmationMessage = $"Din tid hos {barber.Name} er bekræftet.";
+            model.ConfirmedBarberName = barber.Name;
+            model.ConfirmedServiceName = service.Name;
+            model.ConfirmedDurationMinutes = service.DurationMinutes;
+            model.ConfirmedPrice = service.Price;
+            model.ConfirmedDate = createdBooking.BookingTime.Date;
+            model.ConfirmedTime = createdBooking.BookingTime.TimeOfDay;
             ModelState.Clear();
             return View(model);
         }

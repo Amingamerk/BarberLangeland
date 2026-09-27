@@ -37,9 +37,15 @@
                         {
                             <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="MyBookings">Mine bookinger</a></li>
                             <li class="nav-item rounded-pill px-4">
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                @* d-flex h-100 makes the form fill the <li> (which is
+                                   stretched to the tallest sibling by the flex row), and
+                                   the button keeps the plain .nav-link metrics so it
+                                   shares a baseline with the anchor items. Bootstrap's
+                                   .btn was previously supplying its own line-height and
+                                   padding, which is what pushed the item out of line. *@
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-flex h-100 align-items-center">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="nav-link btn btn-link p-0 border-0">Log ud</button>
+                                    <button type="submit" class="nav-link">Log ud</button>
                                 </form>
                             </li>
                         }

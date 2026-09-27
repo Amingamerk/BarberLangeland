@@ -6,35 +6,47 @@
 }
 
 <div class="booking-page">
-    <div class="booking-shell">
-        <form asp-controller="Booking" asp-action="Index" method="post" class="booking-main">
-            @Html.AntiForgeryToken()
+    @* Once the booking is persisted the wizard is not rendered at all. Re-rendering a
+       live form after a successful POST would let the customer submit the same slot
+       twice, so the confirmation screen replaces the entire flow. *@
+    @if (Model.BookingConfirmed)
+    {
+        <div class="booking-shell booking-shell--confirmed">
+            <partial name="_Confirmation" model="Model" />
+        </div>
+    }
+    else
+    {
+        <div class="booking-shell">
+            <form asp-controller="Booking" asp-action="Index" method="post" class="booking-main">
+                @Html.AntiForgeryToken()
 
-            @if (Model.BookingConfirmed)
-            {
-                <div class="booking-alert booking-alert--success" role="status">
-                    @Model.ConfirmationMessage
-                </div>
-            }
+                <div asp-validation-summary="ModelOnly" class="booking-alert booking-alert--error"></div>
+                <partial name="_BarberSelector" model="Model" />
+                <partial name="_ServiceSelector" model="Model" />
+                <partial name="_DateTimeSelector" model="Model" />
+                <partial name="_ContactInformation" model="Model" />
+            </form>
 
-            <div asp-validation-summary="ModelOnly" class="booking-alert booking-alert--error"></div>
-            <partial name="_BarberSelector" model="Model" />
-            <partial name="_ServiceSelector" model="Model" />
-            <partial name="_DateTimeSelector" model="Model" />
-            <partial name="_ContactInformation" model="Model" />
-        </form>
-
-        <partial name="_Sidebar" model="Model" />
-    </div>
+            <partial name="_Sidebar" model="Model" />
+        </div>
+    }
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // The confirmation screen renders no wizard markup, so none of the
+            // elements this script wires up exist. Bail out before the first
+            // null dereference.
+            if (document.querySelector("[data-time-selection]") === null) {
+                return;
+            }
+
             const bookingDateInput = document.getElementById("BookingDate");
             const bookingTimeInput = document.getElementById("BookingTime");
-            const dateTimeSection = document.querySelector("[data-booking-availability]");
+            const dateTimeSection = document.querySelector("[data-time-panels]");
             const contactFields = document.querySelector("[data-contact-fields]");
             const confirmButton = document.querySelector("[data-confirm-button]");
             const timeSelection = document.querySelector("[data-time-selection]");
@@ -44,8 +56,16 @@
             const checkPhoneButton = document.querySelector("[data-check-phone-button]");
             const accountReveal = document.querySelector("[data-account-reveal]");
             const phoneError = document.querySelector("[data-phone-error]");
-            let phoneIsKnown = accountReveal ? accountReveal.querySelector("#Password") !== null : false;
-            let phoneChecked = false;
+            // The reveal block is always server-rendered now, so its state has to come from
+            // the flags the controller sets, not from whether the fields happen to exist.
+            // After a failed POST the controller round-trips PhoneConfirmed/IsKnownPhone so
+            // a returning customer does not get dropped back to the phone-only view.
+            let phoneIsKnown = accountReveal
+                ? accountReveal.dataset.phoneKnown === "true"
+                : false;
+            let phoneChecked = accountReveal
+                ? accountReveal.dataset.phoneConfirmed === "true"
+                : false;
             let phoneCheckToken = 0;
 
             const steps = Array.from(document.querySelectorAll("[data-step]"));
@@ -846,6 +866,14 @@
 
             bindStepToggles();
             bindOptionGroups();
+
+            // On a redisplay after a failed POST the reveal must be rebuilt from the flags
+            // the controller sent back, otherwise a returning customer would be shown the
+            // phone-only view again and lose what they had typed.
+            if (phoneChecked && accountReveal) {
+                renderAccountReveal(phoneIsKnown);
+            }
+
             renderSteps();
         });
     </script>

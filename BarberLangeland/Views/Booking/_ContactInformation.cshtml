@@ -48,57 +48,47 @@
             Næste <span aria-hidden="true">»</span>
         </button>
 
-        @* Revealed only after the server has confirmed whether the number is registered. *@
-        <div class="booking-account-reveal" data-account-reveal aria-live="polite" hidden>
-            @if (Model.IsKnownPhone)
+        @* Revealed only after the client has confirmed whether the number is registered.
+           Name/Email/Password are ALWAYS rendered: renderAccountReveal() in Index.cshtml
+           decides which of them apply by toggling visibility, so rendering them
+           conditionally meant the reveal block came back empty on a fresh GET and a
+           first-time customer could never get past the disabled Confirm button. *@
+        <div class="booking-account-reveal" data-account-reveal aria-live="polite"
+         data-phone-confirmed="@(Model.PhoneConfirmed ? "true" : "false")"
+         data-phone-known="@(Model.IsKnownPhone ? "true" : "false")"
+         hidden>
+            <p class="booking-account-reveal__hint">Udfyld dine oplysninger</p>
+
+            <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
             {
-                <p class="booking-account-reveal__hint">Velkommen tilbage. Indtast din adgangskode for at fortsætte.</p>
+                Id = "Name",
+                Label = "Navn",
+                Placeholder = "Dit navn",
+                AutoComplete = "name",
+                Value = Model.Name ?? string.Empty
+            }' />
+            <span asp-validation-for="Name" class="booking-validation"></span>
 
-                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-                {
-                    Id = "Password",
-                    Label = "Adgangskode",
-                    Type = "password",
-                    Placeholder = "Din adgangskode",
-                    AutoComplete = "current-password"
-                }' />
-                <span asp-validation-for="Password" class="booking-validation"></span>
-            }
-            else if (Model.PhoneConfirmed)
+            <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
             {
-                <p class="booking-account-reveal__hint">Vi fandt ikke en konto med dette nummer. Opret din konto for at fortsætte.</p>
+                Id = "Email",
+                Label = "E-mail",
+                Type = "email",
+                Placeholder = "din@email.dk",
+                AutoComplete = "email",
+                Value = Model.Email ?? string.Empty
+            }' />
+            <span asp-validation-for="Email" class="booking-validation"></span>
 
-                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-                {
-                    Id = "Name",
-                    Label = "Navn",
-                    Placeholder = "Dit navn",
-                    AutoComplete = "name",
-                    Value = Model.Name
-                }' />
-                <span asp-validation-for="Name" class="booking-validation"></span>
-
-                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-                {
-                    Id = "Email",
-                    Label = "E-mail",
-                    Type = "email",
-                    Placeholder = "din@email.dk",
-                    AutoComplete = "email",
-                    Value = Model.Email
-                }' />
-                <span asp-validation-for="Email" class="booking-validation"></span>
-
-                <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-                {
-                    Id = "Password",
-                    Label = "Vælg adgangskode",
-                    Type = "password",
-                    Placeholder = "Mindst 6 tegn",
-                    AutoComplete = "new-password"
-                }' />
-                <span asp-validation-for="Password" class="booking-validation"></span>
-            }
+            <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+            {
+                Id = "Password",
+                Label = "Vælg adgangskode",
+                Type = "password",
+                Placeholder = "Mindst 6 tegn",
+                AutoComplete = "new-password"
+            }' />
+            <span asp-validation-for="Password" class="booking-validation"></span>
         </div>
 
         <button class="booking-button booking-button--primary" type="submit" data-confirm-button>

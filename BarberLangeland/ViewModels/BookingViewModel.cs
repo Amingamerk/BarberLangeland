@@ -12,9 +12,13 @@ namespace BarberLangeland.ViewModels
 
         public TimeSpan? BookingTime { get; set; }
 
-        public string Name { get; set; } = string.Empty;
+        // Nullable on purpose. MVC validates non-nullable reference types as implicitly
+        // [Required] before the action runs, which would make these mandatory for every
+        // customer. They are only required when the phone number turns out to be unregistered,
+        // and the controller validates exactly that case.
+        public string? Name { get; set; }
 
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
         public string Phone { get; set; } = string.Empty;
 
@@ -43,6 +47,21 @@ namespace BarberLangeland.ViewModels
         public bool BookingConfirmed { get; set; }
 
         public string? ConfirmationMessage { get; set; }
+
+        // Resolved on the success path so the confirmation screen can show exactly what
+        // was booked without re-querying the database or re-formatting in the view.
+        // Only meaningful when BookingConfirmed is true.
+        public string ConfirmedBarberName { get; set; } = string.Empty;
+
+        public string ConfirmedServiceName { get; set; } = string.Empty;
+
+        public int ConfirmedDurationMinutes { get; set; }
+
+        public decimal ConfirmedPrice { get; set; }
+
+        public DateTime ConfirmedDate { get; set; }
+
+        public TimeSpan ConfirmedTime { get; set; }
     }
 
     public class BarberOptionViewModel

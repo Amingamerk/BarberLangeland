@@ -163,6 +163,15 @@ p {
         color: var(--color-sage-green) !important;
     }
 
+    /* Keep every nav item on one baseline regardless of whether it is an <a> or a
+       form-wrapped <button> (the "Log ud" logout form). Centering the item's own
+       content in a stretched flex row makes both share the same vertical box, so
+       an admin's extra "Administration" item does not shift the others. */
+    .navbar .nav-item {
+        align-items: center;
+        display: flex;
+    }
+
 /* Cards & sections */
 .card,
 .bg-light {
@@ -671,14 +680,20 @@ img {
     line-height: 1.45;
 }
 
-/* Date & time — month calendar + slot panel */
-.booking-date-time {
+/* Date & time — month calendar + slot panel.
+   The grid lives on __panels because that is the element the client appends the
+   calendar and the slot panel into as its two direct children. The outer
+   .booking-date-time is only a wrapper so the hidden BookingDate/BookingTime
+   inputs can live outside the grid without occupying a cell. */
+.booking-date-time__panels {
+    align-items: start;
     display: grid;
     gap: var(--booking-space-4);
-    grid-template-columns: minmax(240px, 0.9fr) minmax(0, 1.1fr);
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
 }
 
-.booking-date-card {
+.booking-date-card,
+.booking-calendar {
     background-color: var(--booking-card);
     border: 1px solid var(--booking-card-border);
     border-radius: var(--booking-card-radius);
@@ -808,6 +823,14 @@ img {
     display: grid;
     gap: var(--booking-space-2);
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+}
+
+/* Below the large breakpoint the calendar and the slot panel stack, so the month
+   grid keeps a workable cell size instead of being crushed into a narrow column. */
+@media (max-width: 991.98px) {
+    .booking-date-time__panels {
+        grid-template-columns: 1fr;
+    }
 }
 
 .booking-pill,
@@ -1312,6 +1335,88 @@ img {
     .navbar {
         height: 75px;
     }
+}
+
+/* ---- Booking: confirmation screen ---- */
+
+.booking-shell--confirmed {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 auto;
+    max-width: 640px;
+}
+
+.booking-confirm {
+    background: var(--booking-card);
+    border: 1px solid var(--booking-card-border);
+    border-radius: var(--booking-card-radius);
+    box-shadow: var(--booking-card-shadow);
+    padding: var(--booking-space-6);
+    text-align: center;
+}
+
+.booking-confirm__badge {
+    align-items: center;
+    background: var(--color-sage-green);
+    border-radius: 50%;
+    color: var(--color-cream-white);
+    display: flex;
+    font-size: 1.75rem;
+    height: 64px;
+    justify-content: center;
+    margin: 0 auto var(--booking-space-4);
+    width: 64px;
+}
+
+.booking-confirm__title {
+    color: var(--color-dark-slate);
+    font-size: 1.75rem;
+    margin-bottom: var(--booking-space-2);
+}
+
+.booking-confirm__subtitle {
+    color: var(--booking-muted);
+    margin-bottom: var(--booking-space-5);
+}
+
+.booking-confirm__summary {
+    border-top: 1px solid var(--bs-border-color);
+    margin: 0 0 var(--booking-space-5);
+    text-align: left;
+}
+
+.booking-confirm__row {
+    border-bottom: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: var(--booking-space-4);
+    justify-content: space-between;
+    padding: var(--booking-space-3) 0;
+}
+
+.booking-confirm__row dt {
+    color: var(--booking-muted);
+    font-weight: 600;
+}
+
+.booking-confirm__row dd {
+    color: var(--color-dark-slate);
+    font-weight: 600;
+    margin: 0;
+    text-align: right;
+}
+
+.booking-confirm__home {
+    background: var(--color-sage-green);
+    border-radius: var(--booking-radius-pill);
+    color: var(--color-cream-white);
+    display: inline-block;
+    font-weight: 600;
+    padding: 0.7rem 2.2rem;
+    transition: background-color 0.18s ease;
+}
+
+.booking-confirm__home:hover {
+    background: var(--color-sage-green-hover);
+    color: var(--color-cream-white);
 }
 
 /* ---- Account: login ---- */
