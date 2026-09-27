@@ -41,8 +41,14 @@
                 }' />
             </div>
         </div>
-        <span asp-validation-for="Phone" class="booking-validation"></span>
-        <p class="booking-validation" data-phone-error role="alert" hidden></p>
+        @* These two sit between the phone field and the action buttons. They are grid
+           children, so a message appearing here would otherwise insert a row and push
+           every button down. booking-validation--reserved keeps the row height constant,
+           which is why they must NOT carry [hidden] — Bootstrap's [hidden] rule is
+           !important and would collapse the reservation back to zero. The client shows
+           and hides them with an empty textContent instead. *@
+        <span asp-validation-for="Phone" class="booking-validation booking-validation--reserved"></span>
+        <p class="booking-validation booking-validation--reserved" data-phone-error role="alert"></p>
 
         <button class="booking-button booking-button--secondary" type="button" data-check-phone-button hidden>
             Næste <span aria-hidden="true">»</span>

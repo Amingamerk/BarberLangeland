@@ -156,6 +156,9 @@ namespace BarberLangeland.Controllers
                 // A returning customer never typed a name, so there is nothing to store here.
                 // The views fall back to the phone number rather than misusing the email.
                 Description = model.Name?.Trim() ?? model.Phone,
+                // Bookings are confirmed as soon as they are placed; admin no longer has to
+                // approve each one. Admin can still cancel or mark a no-show afterwards.
+                IsConfirmed = true,
                 UserId = user.Id,
                 User = user
             };

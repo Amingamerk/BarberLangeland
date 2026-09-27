@@ -16,13 +16,31 @@
     <header>
         <nav class="navbar navbar-expand-sm site-navbar">
             <div class="container-fluid d-flex align-items-center justify-content-between">
+                @{
+                    var isAdmin = User?.IsInRole(BarberLangeland.Services.IdentitySeeder.AdminRole) == true;
+                }
 
-                <!-- Venstre: menu (desktop) -->
-                <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
-                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
-                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="About">Om os</a></li>
-                    <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Prices">Priser</a></li>
-                </ul>
+                @* An admin runs the shop, not the customer journey, so the customer-facing
+                   items (Om os, Priser, Kontakt, Mine bookinger, Book en tid) are replaced by
+                   the two views admin actually works in. The logout form is shared between
+                   both branches, so it is only written once. *@
+                @if (isAdmin)
+                {
+                    <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Admin" asp-action="Schedule">Dagens skema</a></li>
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Barbers" asp-action="Index">Frisører</a></li>
+                    </ul>
+                }
+                else
+                {
+                    <!-- Venstre: menu (desktop) -->
+                    <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="About">Om os</a></li>
+                        <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Prices">Priser</a></li>
+                    </ul>
+                }
 
                 <!-- Midt: logo -->
                 <a class="navbar-brand align-content-center mx-auto" asp-controller="Home" asp-action="Index" title="Frisør Langeland">
@@ -32,10 +50,16 @@
                 <!-- Højre: menu + book-knap -->
                 <div class="d-flex align-items-center gap-3">
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
-                        <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                        @if (!isAdmin)
+                        {
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                        }
                         @if (User?.Identity?.IsAuthenticated == true)
                         {
-                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="MyBookings">Mine bookinger</a></li>
+                            @if (!isAdmin)
+                            {
+                                <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="MyBookings">Mine bookinger</a></li>
+                            }
                             <li class="nav-item rounded-pill px-4">
                                 @* d-flex h-100 makes the form fill the <li> (which is
                                    stretched to the tallest sibling by the flex row), and
@@ -53,12 +77,11 @@
                         {
                             <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Account" asp-action="Login">Login</a></li>
                         }
-                        @if (User?.IsInRole(BarberLangeland.Services.IdentitySeeder.AdminRole) == true)
-                        {
-                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Admin" asp-action="Schedule">Administration</a></li>
-                        }
                     </ul>
-                    <a asp-controller="Booking" asp-action="Index" class="btn-book rounded-pill px-4">Book en tid</a>
+                    @if (!isAdmin)
+                    {
+                        <a asp-controller="Booking" asp-action="Index" class="btn-book rounded-pill px-4">Book en tid</a>
+                    }
                 </div>
 
                 <!-- <partial name="_LoginPartial" />  -->

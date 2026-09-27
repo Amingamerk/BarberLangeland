@@ -13,10 +13,12 @@ namespace BarberLangeland.Controllers
     public class AdminController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IBookingAvailabilityService _availabilityService;
 
-        public AdminController(ApplicationDbContext context)
+        public AdminController(ApplicationDbContext context, IBookingAvailabilityService availabilityService)
         {
             _context = context;
+            _availabilityService = availabilityService;
         }
 
         [HttpGet]
@@ -29,6 +31,10 @@ namespace BarberLangeland.Controllers
             // empty groups for a barber with nothing booked.
             model.Barbers = await _context.Barbers
                 .OrderBy(b => b.Name)
+                .ToListAsync();
+
+            model.Services = await _context.Services
+                .OrderBy(s => s.Name)
                 .ToListAsync();
 
             var bookings = await _context.Bookings
@@ -68,13 +74,10 @@ namespace BarberLangeland.Controllers
 
             // Flags are mutually exclusive: a booking that is cancelled is no longer merely
             // unconfirmed, and no-show only makes sense for a booking that was kept.
+            // Bookings are confirmed on creation, so there is no separate confirm action and no
+            // pending state to resolve here.
             switch (action)
             {
-                case "confirm":
-                    booking.IsConfirmed = true;
-                    booking.IsCancelled = false;
-                    booking.IsNoShow = false;
-                    break;
                 case "cancel":
                     booking.IsConfirmed = false;
                     booking.IsCancelled = true;
@@ -86,7 +89,11 @@ namespace BarberLangeland.Controllers
                     booking.IsNoShow = true;
                     break;
                 case "reopen":
-                    booking.IsConfirmed = false;
+                    // Restoring returns the booking to the state it had when created: an active,
+                    // confirmed appointment. Leaving it unconfirmed would strand it, since the
+                    // manual confirm action no longer exists. A no-show that turns out to have
+                    // been a no-show in name only correctly comes back as confirmed too.
+                    booking.IsConfirmed = true;
                     booking.IsCancelled = false;
                     booking.IsNoShow = false;
                     break;
@@ -99,6 +106,65 @@ namespace BarberLangeland.Controllers
             await _context.SaveChangesAsync();
 
             return RedirectToAction(nameof(Schedule), new { date = date.Date });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditBooking(
+            int id,
+            DateTime date,
+            int barberId,
+            int serviceId,
+            TimeSpan time,
+            string? returnDate)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null)
+            {
+                return NotFound();
+            }
+
+            var barber = await _context.Barbers.FindAsync(barberId);
+            var service = await _context.Services.FindAsync(serviceId);
+            if (barber == null || service == null)
+            {
+                return BadRequest();
+            }
+
+            var newStart = date.Date.Add(time);
+            var newDuration = TimeSpan.FromMinutes(service.DurationMinutes);
+
+            // Reuse the booking flow's own availability rules rather than duplicating the
+            // opening-hours and overlap logic here. The booking being moved is excluded so it
+            // does not occupy its own current slot.
+            var availableDays = await _availabilityService.GetAvailableDaysAsync(
+                barber.Id,
+                service.Id,
+                newStart.Date,
+                dayCount: 1,
+                excludeBookingId: booking.Id);
+
+            var slotIsAvailable = availableDays
+                .SelectMany(day => day.Slots.Select(slot => slot.Time))
+                .Any(slot => slot == time);
+
+            if (!slotIsAvailable)
+            {
+                TempData["AdminScheduleError"] =
+                    "Tidspunktet er ikke ledigt for den valgte frisør og behandling.";
+                return RedirectToAction(nameof(Schedule), new { date = returnDate ?? date.ToString("yyyy-MM-dd") });
+            }
+
+            booking.BookingTime = newStart;
+            booking.BarberId = barber.Id;
+            booking.ServiceId = service.Id;
+            // The stored duration must follow the new service, otherwise the booking keeps
+            // occupying the old treatment's worth of time.
+            booking.Duration = newDuration;
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Schedule), new { date = returnDate ?? date.ToString("yyyy-MM-dd") });
         }
     }
 }

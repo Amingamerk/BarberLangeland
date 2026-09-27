@@ -57,7 +57,8 @@ namespace BarberLangeland.Services
             int barberId,
             int serviceId,
             DateTime startDate,
-            int dayCount = 2)
+            int dayCount = 2,
+            int? excludeBookingId = null)
         {
             if (dayCount < 1)
             {
@@ -78,7 +79,8 @@ namespace BarberLangeland.Services
             var rawRows = await _context.Bookings
                 .Where(booking => booking.BarberId == barberId
                     && booking.BookingTime < lastDate.Date.AddDays(1)
-                    && booking.BookingTime > firstDate.AddDays(-1))
+                    && booking.BookingTime > firstDate.AddDays(-1)
+                    && (excludeBookingId == null || booking.Id != excludeBookingId))
                 .Select(booking => new
                 {
                     BookingTime = booking.BookingTime,

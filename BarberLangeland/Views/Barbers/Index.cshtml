@@ -1,47 +1,47 @@
 @model IEnumerable<BarberLangeland.Models.Barber>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Frisører";
 }
 
-<h1>Index</h1>
+<section class="container section-padding admin-barbers">
+    <div class="admin-barbers__header">
+        <h1 class="section-title">Frisører</h1>
+        <a asp-action="Create" class="btn btn-book rounded-pill px-4">Tilføj frisør</a>
+    </div>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.ImagePath)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(model => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(model => item.Title)
-            </td>
-            <td>
-                @Html.DisplayFor(model => item.ImagePath)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+    @if (!Model.Any())
+    {
+        <p class="booking-empty-state">Der er ingen frisører oprettet endnu.</p>
+    }
+    else
+    {
+        <div class="admin-barbers__grid">
+            @foreach (var barber in Model)
+            {
+                <article class="admin-barbers__card">
+                    <div class="admin-barbers__photo">
+                        @if (!string.IsNullOrWhiteSpace(barber.ImagePath))
+                        {
+                            <img src="@barber.ImagePath" alt="@barber.Name" />
+                        }
+                        else
+                        {
+                            <span class="admin-barbers__initials">@(barber.Name.Length > 0 ? barber.Name[..1].ToUpperInvariant() : "?")</span>
+                        }
+                    </div>
+
+                    <div class="admin-barbers__body">
+                        <h2 class="admin-barbers__name">@barber.Name</h2>
+                        <p class="admin-barbers__title">@barber.Title</p>
+                    </div>
+
+                    <div class="admin-barbers__actions">
+                        <a asp-action="Edit" asp-route-id="@barber.Id" class="btn btn-sm btn-outline-secondary">Rediger</a>
+                        <a asp-action="Delete" asp-route-id="@barber.Id" class="btn btn-sm btn-outline-danger">Slet</a>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>

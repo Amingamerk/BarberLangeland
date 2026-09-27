@@ -58,7 +58,7 @@
                                 : booking.Description;
                             var status = booking.IsCancelled ? "Aflyst"
                                 : booking.IsNoShow ? "Mødt ikke op"
-                                : booking.IsConfirmed ? "Bekræftet" : "Afventer";
+                                : "Bekræftet";
 
                             <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
                                 <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
@@ -67,14 +67,14 @@
                                     <span class="admin-schedule__phone">@booking.User?.PhoneNumber</span>
                                 </td>
                                 <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
-                                <td><span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : booking.IsConfirmed ? "text-bg-success" : "text-bg-light")">@status</span></td>
+                                <td><span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span></td>
                                 <td class="admin-schedule__actions">
-                                    <form method="post" asp-action="UpdateStatus" class="d-inline">
-                                        <input type="hidden" name="id" value="@booking.Id" />
-                                        <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
-                                        <input type="hidden" name="action" value="confirm" />
-                                        <button class="btn btn-sm btn-outline-success" type="submit" @(booking.IsConfirmed && !booking.IsNoShow ? "disabled" : null)>Bekræft</button>
-                                    </form>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editBookingModal"
+                                            data-booking-id="@booking.Id"
+                                            data-date="@Model.Date.ToString("yyyy-MM-dd")"
+                                            data-time="@booking.BookingTime.ToString(@"HH\:mm")"
+                                            data-barber-id="@booking.BarberId"
+                                            data-service-id="@booking.ServiceId">Rediger</button>
                                     <form method="post" asp-action="UpdateStatus" class="d-inline">
                                         <input type="hidden" name="id" value="@booking.Id" />
                                         <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
@@ -85,9 +85,9 @@
                                         <input type="hidden" name="id" value="@booking.Id" />
                                         <input type="hidden" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
                                         <input type="hidden" name="action" value="cancel" />
-                                        <button class="btn btn-sm btn-outline-secondary" type="submit" disabled="@booking.IsCancelled">Aflys</button>
+                                        <button class="btn btn-sm btn-outline-danger" type="submit" disabled="@booking.IsCancelled">Aflys</button>
                                     </form>
-                                    @if (booking.IsCancelled || booking.IsNoShow || booking.IsConfirmed)
+                                    @if (booking.IsCancelled || booking.IsNoShow)
                                     {
                                         <form method="post" asp-action="UpdateStatus" class="d-inline">
                                             <input type="hidden" name="id" value="@booking.Id" />
@@ -105,4 +105,80 @@
             </div>
         }
     }
+
+    @if (TempData["AdminScheduleError"] is string editError && !string.IsNullOrWhiteSpace(editError))
+    {
+        <div class="alert alert-danger admin-schedule__error" role="alert">@editError</div>
+    }
 </section>
+
+@if (Model.Barbers.Count > 0)
+{
+    <div class="modal fade" id="editBookingModal" tabindex="-1" aria-labelledby="editBookingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-action="EditBooking">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="editBookingId" />
+                    <input type="hidden" name="returnDate" value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editBookingModalLabel">Rediger booking</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Luk"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label" for="editBookingDate">Dato</label>
+                            <input type="date" class="form-control" id="editBookingDate" name="date" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editBookingTime">Tidspunkt</label>
+                            <input type="time" class="form-control" id="editBookingTime" name="time" step="1800" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editBookingBarber">Frisør</label>
+                            <select class="form-select" id="editBookingBarber" name="barberId" required>
+                                @foreach (var barber in Model.Barbers)
+                                {
+                                    <option value="@barber.Id">@barber.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editBookingService">Behandling</label>
+                            <select class="form-select" id="editBookingService" name="serviceId" required>
+                                @foreach (var service in Model.Services)
+                                {
+                                    <option value="@service.Id">@service.Name · @service.DurationMinutes min</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuller</button>
+                        <button type="submit" class="btn btn-book">Gem ændringer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var modal = document.getElementById('editBookingModal');
+            if (!modal) return;
+
+            modal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) return;
+                document.getElementById('editBookingId').value = trigger.dataset.bookingId;
+                document.getElementById('editBookingDate').value = trigger.dataset.date;
+                document.getElementById('editBookingTime').value = trigger.dataset.time;
+                document.getElementById('editBookingBarber').value = trigger.dataset.barberId;
+                document.getElementById('editBookingService').value = trigger.dataset.serviceId;
+            });
+        })();
+    </script>
+}
