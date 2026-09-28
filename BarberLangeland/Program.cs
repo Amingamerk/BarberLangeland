@@ -63,16 +63,22 @@ namespace BarberLangeland
 
             using (var scope = app.Services.CreateScope())
             {
-                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                dbContext.Database.Migrate();
+                try
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    dbContext.Database.Migrate();
 
-                var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
-                var salon = app.Configuration.GetSection("Salon");
-                // No fallback: the password is expected from user secrets or the environment,
-                // and an absent one makes the seeder skip rather than guess one.
-                await seeder.SeedAsync(
-                    salon["AdminEmail"],
-                    salon["AdminPassword"]);
+                    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+                    var salon = app.Configuration.GetSection("Salon");
+
+                    await seeder.SeedAsync(
+                        salon["AdminEmail"],
+                        salon["AdminPassword"]);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
 
             // Configure the HTTP request pipeline.
