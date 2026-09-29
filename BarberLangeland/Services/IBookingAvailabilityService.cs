@@ -26,5 +26,12 @@ namespace BarberLangeland.Services
         /// schedule the slot generator uses.
         /// </summary>
         IReadOnlyList<OpeningHoursViewModel> GetOpeningHours();
+
+        /// <summary>
+        /// Whether the shop is open at <paramref name="localNow"/> (shop-local time), using the same
+        /// opening hours as the slot generator. The opening time is inclusive and the closing time
+        /// exclusive, so at exactly 17:00 the shop counts as closed.
+        /// </summary>
+        ShopStatus GetShopStatus(DateTime localNow);
     }
 }

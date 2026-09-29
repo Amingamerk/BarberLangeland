@@ -15,11 +15,13 @@
             <p class="hero-description">
                 Vi er en lille lokal frisør med fokus på godt håndværk og personlig service. Her er der tid til dig og dine ønsker – uanset om du er til det klassiske, moderne eller bare trænger til en frisk klipning. Kom forbi og oplev en hyggelig frisør, hvor kvalitet og nærvær er i fokus.
             </p>
-            @if (Model.Today != null)
+            @if (Model.Status != null)
             {
-                <p class="hero-today">
-                    <span class="hero-today__dot @(Model.Today.IsClosed ? "is-closed" : null)" aria-hidden="true"></span>
-                    I dag (@Model.Today.Day.ToLowerInvariant()): @(Model.Today.IsClosed ? "lukket" : Model.Today.Hours)
+                @* Green while the shop is open, red while it is closed (also outside opening hours).
+                   The page is never cached, so this reflects the moment it is loaded. *@
+                <p class="hero-today" data-shop-status="@(Model.Status.IsOpen ? "open" : "closed")">
+                    <span class="hero-today__dot @(Model.Status.IsOpen ? null : "is-closed")" aria-hidden="true"></span>
+                    @Model.StatusText
                 </p>
             }
             <div class="hero-buttons">
