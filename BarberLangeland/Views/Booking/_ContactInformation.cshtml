@@ -103,6 +103,11 @@
             <span asp-validation-for="Password" class="booking-validation"></span>
         </div>
 
+        <p class="text-muted small">
+            Vi bruger dine oplysninger til at håndtere din booking. Læs vores
+            <a asp-controller="Home" asp-action="Privacy" target="_blank" rel="noopener">privatlivspolitik</a>.
+        </p>
+
         <button class="booking-button booking-button--primary" type="submit" data-confirm-button>
             Bekræft booking <span aria-hidden="true">→</span>
         </button>

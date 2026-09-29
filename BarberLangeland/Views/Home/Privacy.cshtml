@@ -1,0 +1,88 @@
+@{
+    ViewData["Title"] = "Privatlivspolitik";
+    ViewData["FullTitle"] = "Privatlivspolitik | Frisør Langeland";
+    ViewData["Description"] = "Sådan behandler Frisør Langeland dine personoplysninger, når du booker en tid.";
+}
+
+<section class="page-section page-section--intro">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <p class="hero-subtitle">@SalonInfo.Name</p>
+                <h1>Privatlivspolitik</h1>
+                <p>
+                    Her kan du læse, hvordan vi behandler dine personoplysninger, når du bruger
+                    hjemmesiden og booker en tid hos os.
+                </p>
+
+                <h2 class="h4 mt-5">Hvem er ansvarlig?</h2>
+                <p>
+                    @SalonInfo.Name<br />
+                    CVR: @SalonInfo.Cvr<br />
+                    @SalonInfo.AddressLine1, @SalonInfo.AddressLine2<br />
+                    Tlf: <a href="tel:@SalonInfo.PhoneHref">@SalonInfo.PhoneDisplay</a><br />
+                    Mail: <a href="mailto:@SalonInfo.Email">@SalonInfo.Email</a>
+                </p>
+
+                <h2 class="h4 mt-5">Hvilke oplysninger indsamler vi?</h2>
+                <p>Når du booker en tid, gemmer vi:</p>
+                <ul>
+                    <li>dit navn, din e-mailadresse og dit telefonnummer</li>
+                    <li>din adgangskode, som kun gemmes som en krypteret kode (hash) og aldrig i klartekst</li>
+                    <li>oplysninger om bookingen: behandling, frisør, tidspunkt og pris</li>
+                </ul>
+                <p>
+                    Vi beder ikke om og gemmer ikke følsomme oplysninger, og vi bruger ikke oplysningerne
+                    til markedsføring.
+                </p>
+
+                <h2 class="h4 mt-5">Hvorfor og på hvilket grundlag?</h2>
+                <p>
+                    Vi bruger oplysningerne til at oprette og administrere din booking, kontakte dig om
+                    din tid og sende dig et bekræftelseslink på e-mail. Grundlaget er, at det er
+                    nødvendigt for at kunne aftale og levere en tid til dig (databeskyttelsesforordningens
+                    artikel 6, stk. 1, litra b).
+                </p>
+
+                <h2 class="h4 mt-5">Hvor længe gemmer vi dem?</h2>
+                <p>
+                    Vi gemmer dine oplysninger, så længe du har en konto hos os. Hvis du ikke bekræfter din
+                    e-mailadresse inden for 24 timer, sletter vi kontoen og den tilhørende booking
+                    automatisk. Du kan til enhver tid bede os om at slette din konto og dine bookinger.
+                </p>
+
+                <h2 class="h4 mt-5">Hvem får oplysningerne?</h2>
+                <p>
+                    Vi videregiver ikke dine oplysninger til andre til deres egne formål. Hjemmesiden
+                    driftes hos Microsoft Azure, og e-mails sendes via vores mailudbyder. De behandler kun
+                    oplysningerne på vores vegne.
+                </p>
+                <p>
+                    Forsiden viser vores Google-anmeldelser via en widget fra Elfsight. Når du åbner
+                    forsiden, hentes widgetten fra Elfsights servere, og din IP-adresse kan derfor blive
+                    set af Elfsight og Google.
+                </p>
+
+                <h2 class="h4 mt-5">Cookies</h2>
+                <p>
+                    Vi bruger kun de cookies, der er nødvendige for, at siden virker: en login-cookie, når
+                    du er logget ind, og en sikkerhedscookie, der beskytter formularer mod misbrug. Vi bruger
+                    ingen cookies til statistik eller markedsføring.
+                </p>
+
+                <h2 class="h4 mt-5">Dine rettigheder</h2>
+                <p>
+                    Du har ret til at få indsigt i, rette og slette de oplysninger, vi har om dig, til at
+                    få dem udleveret, til at begrænse behandlingen og til at gøre indsigelse. Skriv til
+                    <a href="mailto:@SalonInfo.Email">@SalonInfo.Email</a>, så hjælper vi dig.
+                </p>
+                <p>
+                    Er du utilfreds med, hvordan vi behandler dine oplysninger, kan du klage til
+                    <a href="https://www.datatilsynet.dk" target="_blank" rel="noopener">Datatilsynet</a>.
+                </p>
+
+                <p class="text-muted small mt-5">Sidst opdateret: september 2026.</p>
+            </div>
+        </div>
+    </div>
+</section>

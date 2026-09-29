@@ -9,6 +9,8 @@ namespace BarberLangeland.ViewModels
         public const string Name = "Frisør Langeland";
         public const string Tagline = "Herreklipning & skægtrimning";
 
+        public const string Cvr = "33341237";
+
         public const string PhoneDisplay = "22 82 97 27";
         public const string PhoneHref = "+4522829727";
 
