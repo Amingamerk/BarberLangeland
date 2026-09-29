@@ -1,0 +1,28 @@
+@model SitePageViewModel
+
+@* Contact details and opening hours. The nav's "Kontakt" link jumps to #kontakt on the front
+   page, and the same block closes the About and Priser pages. The data comes from SalonInfo
+   and from the availability service, the same sources the booking page uses, so a change in
+   one place shows up everywhere. *@
+<section class="site-section site-section--alt" id="kontakt">
+    <div class="container">
+        <h2 class="site-section__title">Find os</h2>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h3 class="site-subtitle">Kontakt</h3>
+                <p class="mb-2">
+                    @SalonInfo.AddressLine1<br />
+                    @SalonInfo.AddressLine2
+                </p>
+                <p class="mb-2"><a href="@SalonInfo.MapUrl" target="_blank" rel="noopener">Se kort</a></p>
+                <p class="mb-2">Tlf: <a href="tel:@SalonInfo.PhoneHref">@SalonInfo.PhoneDisplay</a></p>
+                <p class="mb-3">Mail: <a href="mailto:@SalonInfo.Email">@SalonInfo.Email</a></p>
+                <a asp-controller="Booking" asp-action="Index" class="btn btn-book rounded-pill px-4">Book en tid</a>
+            </div>
+            <div class="col-md-6">
+                <h3 class="site-subtitle">Åbningstider</h3>
+                <partial name="_OpeningHours" model="Model" />
+            </div>
+        </div>
+    </div>
+</section>

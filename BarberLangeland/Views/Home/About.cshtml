@@ -1,8 +1,10 @@
+@model SitePageViewModel
 @{
     ViewData["Title"] = "Om os";
+    ViewData["Description"] = "Om Frisør Langeland i Rudkøbing: frisør siden 2011 med old school barbertradition, skarpe fades og personlig service.";
 }
 
-<section class="page-section">
+<section class="page-section page-section--intro">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
@@ -29,3 +31,80 @@
         </div>
     </div>
 </section>
+
+<section class="site-section site-section--alt">
+    <div class="container">
+        <h2 class="site-section__title">Vores historie</h2>
+        <div class="site-placeholder">
+            <strong>[Udfyld: vores historie]</strong>
+            Fortæl kort, hvordan salonen startede i 2011, hvorfor den ligger i Rudkøbing, og hvad der gør stedet
+            særligt. To til tre afsnit er nok. Fjern denne boks, når teksten er skrevet.
+        </div>
+    </div>
+</section>
+
+<section class="site-section">
+    <div class="container">
+        <h2 class="site-section__title">Det kan du forvente</h2>
+        <div class="row g-4 justify-content-center">
+            @foreach (var service in Model.Services)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="card h-100 p-4">
+                        <div class="card-body">
+                            <h3 class="h5">@service.Name</h3>
+                            <p class="mb-2">@service.Description</p>
+                            <p class="text-muted mb-0">@service.DurationMinutes minutter</p>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+        <p class="text-center mt-4"><a asp-controller="Home" asp-action="Prices">Se priser</a></p>
+    </div>
+</section>
+
+@if (Model.Barbers.Count > 0)
+{
+    <section class="site-section site-section--alt">
+        <div class="container">
+            <h2 class="site-section__title">Mød frisørerne</h2>
+            <div class="row g-4 justify-content-center">
+                @foreach (var barber in Model.Barbers)
+                {
+                    <div class="col-sm-6 col-lg-4">
+                        <article class="card h-100 site-team-card">
+                            @if (!string.IsNullOrWhiteSpace(barber.ImagePath))
+                            {
+                                <img src="@barber.ImagePath" class="site-team-card__photo" alt="@barber.Name" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="site-team-card__photo site-team-card__photo--initial" aria-hidden="true">@barber.Name.Substring(0, 1).ToUpperInvariant()</div>
+                            }
+                            <div class="card-body">
+                                <h3 class="h5 mb-1">@barber.Name</h3>
+                                <p class="text-muted mb-3">@barber.Title</p>
+                                <a asp-controller="Booking" asp-action="Index" asp-route-barberId="@barber.Id"
+                                   class="btn btn-book rounded-pill px-4">Book hos @barber.Name.Split(' ')[0]</a>
+                            </div>
+                        </article>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<section class="site-section">
+    <div class="container">
+        <h2 class="site-section__title">Billeder fra salonen</h2>
+        <div class="site-placeholder">
+            <strong>[Udfyld: billedgalleri]</strong>
+            Tilføj 4–8 billeder af salonen og dit arbejde (fades, skæg, børneklip). Læg billederne i
+            <code>wwwroot/images</code> og vis dem her i et gitter. Fjern denne boks, når billederne er på plads.
+        </div>
+    </div>
+</section>
+
+<partial name="_FindUs" model="Model" />

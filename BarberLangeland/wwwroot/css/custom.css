@@ -1698,10 +1698,6 @@ img {
         padding: 40px 20px;
     }
 
-    .navbar .d-flex {
-        flex-direction: column;
-    }
-
     .navbar-brand img {
         width: 45px;
         height: 45px;
@@ -1977,4 +1973,395 @@ img {
     .admin-barbers__form {
         padding: 1.25rem;
     }
+}
+
+
+/* ---- Mobile: navigation, footer and admin tables ---- */
+
+/* Hamburger button (shown below the lg breakpoint, where the desktop link lists are hidden). */
+.mobile-toggle {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+    width: 44px;
+}
+
+.mobile-toggle:focus-visible {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem rgba(124, 152, 133, 0.5);
+    outline: none;
+}
+
+.mobile-toggle__bars,
+.mobile-toggle__bars::before,
+.mobile-toggle__bars::after {
+    background: var(--color-dark-slate);
+    border-radius: 2px;
+    display: block;
+    height: 2px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    width: 22px;
+}
+
+.mobile-toggle__bars {
+    position: relative;
+}
+
+.mobile-toggle__bars::before,
+.mobile-toggle__bars::after {
+    content: "";
+    left: 0;
+    position: absolute;
+}
+
+.mobile-toggle__bars::before { top: -7px; }
+.mobile-toggle__bars::after { top: 7px; }
+
+.mobile-toggle[aria-expanded="true"] .mobile-toggle__bars {
+    background: transparent;
+}
+
+.mobile-toggle[aria-expanded="true"] .mobile-toggle__bars::before {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.mobile-toggle[aria-expanded="true"] .mobile-toggle__bars::after {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* The drop-down panel hangs off the bottom edge of the fixed-height navbar. */
+.mobile-menu {
+    background: var(--color-warm-sand);
+    border-bottom: 2px solid var(--bs-border-color);
+    box-shadow: 0 10px 18px rgba(43, 58, 66, 0.18);
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 1029;
+}
+
+.mobile-menu .navbar-nav {
+    flex-direction: column;
+}
+
+.mobile-menu .nav-item {
+    display: block;
+}
+
+.mobile-menu .nav-link,
+.mobile-menu button.nav-link {
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--bs-border-color);
+    display: block;
+    font-size: 1.05rem;
+    min-height: 48px;
+    padding: 0.85rem 1.25rem;
+    text-align: left;
+    width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    /* Keep hamburger | logo | book button on one row (the logo is centred absolutely). */
+    .navbar > .container-fluid {
+        flex-direction: row;
+        flex-wrap: nowrap;
+    }
+
+    .navbar .btn-book {
+        align-items: center;
+        display: inline-flex;
+        font-size: 0.9rem;
+        min-height: 44px;
+        padding: 8px 16px;
+        white-space: nowrap;
+    }
+}
+
+/* The copyright line used a dark-on-dark colour that was nearly invisible on the footer. */
+footer .text-dark-emphasis {
+    color: rgba(250, 247, 242, 0.7) !important;
+}
+
+footer p {
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+/* Admin booking tables become one card per booking on phones instead of scrolling sideways. */
+@media (max-width: 767.98px) {
+    .admin-schedule__table,
+    .admin-schedule__table tbody,
+    .admin-schedule__table tr,
+    .admin-schedule__table td {
+        display: block;
+        width: 100%;
+    }
+
+    /* Kept for screen readers; each cell carries its own label below. */
+    .admin-schedule__table thead {
+        clip: rect(0 0 0 0);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        width: 1px;
+    }
+
+    .admin-schedule__table tr {
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.75rem 0.9rem;
+    }
+
+    .admin-schedule__table tr:last-child {
+        border-bottom: 0;
+    }
+
+    .admin-schedule__table td {
+        align-items: baseline;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        padding: 0.2rem 0;
+        text-align: right;
+    }
+
+    .admin-schedule__table td::before {
+        color: var(--color-dark-slate);
+        content: attr(data-label);
+        flex: 0 0 5.5rem;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .admin-schedule__table td.admin-schedule__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: flex-start;
+        margin-top: 0.4rem;
+        text-align: left;
+    }
+
+    .admin-schedule__table td.admin-schedule__actions::before {
+        content: none;
+    }
+
+    .admin-schedule__table .btn-sm {
+        min-height: 40px;
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+    }
+}
+
+/* Booking wizard headers on small phones: the status ("Vælg dato og tid", the chosen barber, ...)
+   was cut off with an ellipsis next to the title. Let it wrap onto its own line instead. */
+@media (max-width: 575.98px) {
+    .booking-step__header {
+        flex-wrap: wrap;
+    }
+
+    .booking-step__titles {
+        flex: 1 1 0;
+    }
+
+    .booking-step__status {
+        flex: 0 0 100%;
+        margin-left: 0;
+        order: 5;
+        padding-left: 3.5rem;
+        white-space: normal;
+    }
+
+    .booking-step__status:empty {
+        display: none;
+    }
+}
+
+/* ---- Public pages: Forside, Om os, Priser ---- */
+
+.site-section {
+    padding: 60px 20px;
+}
+
+.site-section--alt {
+    background-color: var(--color-cream-white);
+}
+
+.site-section__title {
+    color: var(--color-dark-slate);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.site-subtitle {
+    color: var(--color-dark-slate);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.site-note {
+    color: var(--color-dark-slate);
+    font-size: 0.9rem;
+    opacity: 0.75;
+}
+
+.site-price-card .btn-book {
+    margin-top: 1rem;
+}
+
+.site-hours {
+    max-width: 22rem;
+    width: 100%;
+}
+
+.site-hours th,
+.site-hours td {
+    font-weight: 400;
+    padding: 0.3rem 0;
+}
+
+.site-hours td {
+    text-align: right;
+}
+
+.site-hours tr.is-today th,
+.site-hours tr.is-today td {
+    color: var(--color-dark-slate);
+    font-weight: 700;
+}
+
+/* "Åbent i dag" line in the hero */
+.hero-today {
+    align-items: center;
+    color: var(--color-cream-white);
+    display: flex;
+    font-weight: 600;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.hero-today__dot {
+    background: var(--color-sage-green);
+    border-radius: 50%;
+    display: inline-block;
+    height: 0.7rem;
+    width: 0.7rem;
+}
+
+.hero-today__dot.is-closed {
+    background: #b0605a;
+}
+
+/* Team cards on Om os */
+.site-team-card {
+    overflow: hidden;
+}
+
+.site-team-card__photo {
+    aspect-ratio: 4 / 3;
+    display: block;
+    object-fit: cover;
+    width: 100%;
+}
+
+.site-team-card__photo--initial {
+    align-items: center;
+    background: var(--color-warm-sand);
+    color: var(--color-sage-green);
+    display: flex;
+    font-size: 4rem;
+    font-weight: 700;
+    justify-content: center;
+}
+
+/* Content the owner still has to write. Deliberately loud so it is not shipped by accident. */
+.site-placeholder {
+    background: repeating-linear-gradient(-45deg, #fff8e1, #fff8e1 12px, #fff3cd 12px, #fff3cd 24px);
+    border: 2px dashed #b58900;
+    border-radius: 12px;
+    color: #5c4a00;
+    padding: 1.5rem;
+}
+
+.site-placeholder strong {
+    display: block;
+    margin-bottom: 0.4rem;
+}
+
+@media (max-width: 767.98px) {
+    .site-section {
+        padding: 40px 20px;
+    }
+
+    .site-section__title {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-buttons .btn {
+        padding: 12px 18px;
+    }
+}
+
+/* Links inside the public sections were sage green on sand/cream, which is hard to read. */
+.site-section a:not(.btn):not(.btn-book),
+.site-hours a {
+    color: #46634f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.site-section a:not(.btn):not(.btn-book):hover {
+    color: var(--color-dark-slate);
+}
+
+/* Room for three hero buttons on one row on desktop. */
+.hero-content {
+    max-width: 720px;
+}
+
+/* The full-height rule is for pages that stand alone; the About page continues below its intro. */
+.page-section.page-section--intro {
+    min-height: 0;
+}
+
+/* ---- Email verification ---- */
+
+.booking-confirm__notice {
+    background: var(--color-warm-sand);
+    border-left: 4px solid var(--color-sage-green);
+    border-radius: 8px;
+    margin: 1rem 0 1.25rem;
+    padding: 1rem 1.25rem;
+    text-align: left;
+}
+
+.booking-confirm__notice p:last-child {
+    margin-bottom: 0;
+}
+
+.booking-confirm__badge--error {
+    background: #b0605a;
+}
+
+.account-verify-banner {
+    background: var(--color-cream-white);
+    border: 1px solid var(--bs-border-color);
+    border-left: 4px solid var(--color-sage-green);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+}
+
+.account-verify-banner__result {
+    font-weight: 600;
 }

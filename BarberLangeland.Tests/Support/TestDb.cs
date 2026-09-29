@@ -26,6 +26,8 @@ public sealed class TestDb : IDisposable
         context.Database.EnsureCreated();
     }
 
+    public SqliteConnection Connection => _connection;
+
     public ApplicationDbContext CreateContext() => new(Options());
 
     public DbContextOptions<ApplicationDbContext> Options()

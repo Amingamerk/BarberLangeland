@@ -45,17 +45,18 @@ else
                     : "Ukendt navn";
                 var status = booking.IsCancelled ? "Aflyst"
                     : booking.IsNoShow ? "Mødt ikke op"
+                    : !booking.IsConfirmed ? "Afventer e-mail"
                     : "Bekræftet";
 
                 <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
-                    <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
-                    <td>
+                    <td data-label="Tid">@booking.BookingTime.ToString(@"HH\:mm")</td>
+                    <td data-label="Kunde">
                         @customerName
                         <span class="admin-schedule__phone">@phone</span>
                     </td>
-                    <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
-                    <td>
-                        <span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span>
+                    <td data-label="Behandling">@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
+                    <td data-label="Status">
+                        <span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : !booking.IsConfirmed ? "text-bg-info" : "text-bg-success")">@status</span>
                     </td>
                     <td class="admin-schedule__actions">
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editBookingModal"

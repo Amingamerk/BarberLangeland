@@ -19,7 +19,8 @@ public class AdminControllerTests
     private static AdminController CreateController(Data.ApplicationDbContext context)
     {
         var http = new DefaultHttpContext();
-        return new AdminController(context, new BookingAvailabilityService(context))
+        var clock = new BarberLangeland.Services.CopenhagenTimeProvider();
+        return new AdminController(context, new BookingAvailabilityService(context, clock), clock)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, new NullTempDataProvider())

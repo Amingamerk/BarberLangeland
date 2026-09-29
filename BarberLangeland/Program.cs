@@ -1,8 +1,12 @@
 using BarberLangeland.Data;
 using BarberLangeland.Models;
 using BarberLangeland.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 
 namespace BarberLangeland
 {
@@ -29,7 +33,14 @@ namespace BarberLangeland
             // Admin role can be seeded and used for [Authorize(Roles = "Admin")].
             // AddDefaultUI chains the Identity.UI login/register pages onto that builder.
             builder.Services
-                .AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+                .AddIdentity<ApplicationUser, IdentityRole>(options =>
+                {
+                    options.SignIn.RequireConfirmedAccount = false;
+                    // Applies to both sign-in paths: /Account/Login and the email sign-in on the
+                    // booking form. Five wrong passwords lock the account for fifteen minutes.
+                    options.Lockout.MaxFailedAccessAttempts = 5;
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders()
                 .AddDefaultUI();
@@ -49,15 +60,80 @@ namespace BarberLangeland
                 options.AccessDeniedPath = "/Account/Login";
             });
 
+            // Azure terminates TLS and forwards the request, so without this every visitor would
+            // share the proxy's address. ForwardLimit stays at its default of 1: only the address
+            // appended by the trusted front end is used, never a value the client put in the header.
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
+            // Throttles the unauthenticated endpoints that look up accounts or check passwords
+            // (email check, booking form, login) per client address.
+            var lookupsPerMinute = builder.Configuration.GetValue("RateLimiting:CustomerLookupPerMinute", 10);
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("customer-lookup", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = lookupsPerMinute,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0
+                        }));
+                // "Send the confirmation mail again": a few per hour per signed-in customer, so the
+                // button cannot be used to flood someone's inbox.
+                options.AddPolicy("email-send", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.User.Identity?.IsAuthenticated == true
+                            ? "user:" + httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                            : "ip:" + httpContext.Connection.RemoteIpAddress,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 3,
+                            Window = TimeSpan.FromHours(1),
+                            QueueLimit = 0
+                        }));
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+                    await context.HttpContext.Response.WriteAsync(
+                        "For mange forsøg. Vent et øjeblik og prøv igen.", cancellationToken);
+                };
+            });
+
+            // Outgoing mail (email verification). With no Email:Smtp:Host nothing is sent and
+            // verification is switched off, so a deploy without mail settings behaves as before.
+            builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Email:Smtp"));
+            builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("Site"));
+            if (!string.IsNullOrWhiteSpace(builder.Configuration["Email:Smtp:Host"]))
+            {
+                builder.Services.AddSingleton<ISiteEmailSender, SmtpEmailSender>();
+            }
+            else
+            {
+                builder.Services.AddSingleton<ISiteEmailSender, LoggingEmailSender>();
+            }
+            // How long the link in the confirmation mail works.
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+                options.TokenLifespan = TimeSpan.FromHours(24));
+
             builder.Services.AddControllersWithViews();
             // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
             // built-in Identity UI is served from Razor Pages.
             builder.Services.AddRazorPages();
+            builder.Services.AddSingleton<TimeProvider, CopenhagenTimeProvider>();
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
             builder.Services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
-            builder.Services.AddScoped<IPhoneIdentityService, PhoneIdentityService>();
+            builder.Services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
             builder.Services.AddScoped<IdentitySeeder>();
+            builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+            builder.Services.AddHostedService<UnconfirmedAccountCleanupService>();
 
             var app = builder.Build();
 
@@ -82,6 +158,8 @@ namespace BarberLangeland
             }
 
             // Configure the HTTP request pipeline.
+            app.UseForwardedHeaders();
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseMigrationsEndPoint();
@@ -97,6 +175,8 @@ namespace BarberLangeland
             app.UseRouting();
 
             app.UseAuthentication();
+            // After authentication so the limiter can tell signed-in customers apart.
+            app.UseRateLimiter();
             app.UseAuthorization();
 
             app.MapStaticAssets();

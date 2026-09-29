@@ -1,12 +1,12 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model SitePageViewModel
+@{
+    ViewData["Title"] = "Forside";
+    ViewData["Description"] = "Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning med personlig service. Book din tid online.";
 }
 
-<!-- Hero: video med mørkt overlay -->
+<!-- Hero: video med mørkt overlay (videoen hentes kun på store skærme, se scriptet nederst) -->
 <section class="hero-video">
-    <video autoplay muted loop playsinline>
-        <source src="~/videos/videoplayback.mp4" type="video/mp4">
-    </video>
+    <video autoplay muted loop playsinline preload="none" data-src="@Url.Content("~/videos/videoplayback.mp4")" aria-hidden="true"></video>
     <div class="hero-overlay">
         <div class="hero-content">
             <p class="hero-subtitle">Velkommen til Frisør Langeland</p>
@@ -14,59 +14,98 @@
             <p class="hero-description">
                 Vi er en lille lokal frisør med fokus på godt håndværk og personlig service. Her er der tid til dig og dine ønsker – uanset om du er til det klassiske, moderne eller bare trænger til en frisk klipning. Kom forbi og oplev en hyggelig frisør, hvor kvalitet og nærvær er i fokus.
             </p>
+            @if (Model.Today != null)
+            {
+                <p class="hero-today">
+                    <span class="hero-today__dot @(Model.Today.IsClosed ? "is-closed" : null)" aria-hidden="true"></span>
+                    I dag (@Model.Today.Day.ToLowerInvariant()): @(Model.Today.IsClosed ? "lukket" : Model.Today.Hours)
+                </p>
+            }
             <div class="hero-buttons">
                 <a asp-controller="Booking" asp-action="Index" class="btn btn-book">Book en tid</a>
-                <a asp-controller="Home" asp-action="Prices" class="btn btn-outline-book">Priser</a>
-                <a asp-controller="Home" asp-action="About" class="btn btn-outline-book">Om os</a>
+                <a href="tel:@SalonInfo.PhoneHref" class="btn btn-outline-book">Ring @SalonInfo.PhoneDisplay</a>
+                <a asp-controller="Home" asp-action="Prices" class="btn btn-outline-book">Se priser</a>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Om os sektion -->
-<section class="about-section" id="about-us">
-    <div class="container-fluid">
-        <div class="row align-items-center">
+<!-- Priser: udtræk af behandlingerne, hentes fra databasen -->
+<section class="site-section" id="priser">
+    <div class="container">
+        <h2 class="site-section__title">Priser</h2>
+        <div class="row g-4 justify-content-center">
+            @foreach (var service in Model.Services)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="card h-100 p-4 site-price-card">
+                        <div class="card-body d-flex flex-column">
+                            <h3 class="h4">@service.Name</h3>
+                            <p class="text-muted mb-2">@service.DurationMinutes minutter</p>
+                            <p class="price-value mt-auto">@service.Price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) kr.</p>
+                            <a asp-controller="Booking" asp-action="Index" asp-route-serviceId="@service.Id"
+                               class="btn btn-book rounded-pill px-4 align-self-start">Book @service.Name.ToLowerInvariant()</a>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+        <p class="text-center mt-4"><a asp-controller="Home" asp-action="Prices">Se alle priser og tider</a></p>
+    </div>
+</section>
+
+<!-- Om os: kort udgave, resten står på Om os-siden -->
+<section class="site-section site-section--alt about-section" id="about-us">
+    <div class="container">
+        <div class="row align-items-center g-4">
             <div class="col-lg-6">
-                <img src="~/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg" class="img-thumbnail" alt="Bashar Al-Haj, frisør" />
+                <img src="~/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg" class="img-thumbnail" alt="Bashar Al-Haj, frisør" loading="lazy" />
             </div>
             <div class="col-lg-6">
-                <h2>Om os</h2>
+                <h2 class="site-section__title text-start">Om os</h2>
                 <p>
                     Frisør Langeland har været i branchen siden 2011. Vi bygger på old school
                     barbertradition, skarpe fades og moderne styling med håndværk i ryggen.
                 </p>
-                <p>
-                    Vi giver dig en ægte oplevelse, hvor klipningen er skræddersyet til dig –
-                    fra det klassiske herreklip til den friske skægtrimning. Kom forbi og
-                    oplev forskellen med over 10 års erfaring bag saksen.
-                </p>
-                <a asp-controller="Booking" asp-action="Index" class="btn btn-blue text-light rounded-pill px-4 mt-3">
-                    Book nu
-                </a>
+                <a asp-controller="Home" asp-action="About" class="btn btn-blue text-light rounded-pill px-4 mt-2">Læs mere om os</a>
             </div>
         </div>
     </div>
 </section>
 
-<section class="review-section" id="review">
-
-    <div class="container-fluid">
-
-        <div class="row justify-content-center">
-
-            <div class="col-lg-10">
-
-                <h1 class="text-center">
-                    Hvad kunder siger om os
-                </h1>
-                <script src="https://elfsightcdn.com/platform.js" async></script>
-                <div class="elfsight-app-e6cb43a2-3fbc-4f5b-b42f-15d498d4988f" data-elfsight-app-lazy></div>
-
-            </div>
-
-        </div>
-
+<section class="site-section review-section" id="review">
+    <div class="container">
+        <h2 class="site-section__title">Hvad kunder siger om os</h2>
+        <script src="https://elfsightcdn.com/platform.js" async></script>
+        <div class="elfsight-app-e6cb43a2-3fbc-4f5b-b42f-15d498d4988f" data-elfsight-app-lazy id="reviews-widget"></div>
+        <p class="site-note text-center" id="reviews-fallback" hidden>Anmeldelserne kan ikke vises lige nu.</p>
     </div>
-
 </section>
+
+<partial name="_FindUs" model="Model" />
+
+@section Scripts {
+    <script>
+        (function () {
+            // Hero video: skip the 4 MB download on phones, with reduced motion and with data saver.
+            var video = document.querySelector('video[data-src]');
+            if (video) {
+                var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                var wide = window.matchMedia('(min-width: 768px)').matches;
+                var saveData = navigator.connection && navigator.connection.saveData;
+                if (!reduce && wide && !saveData) {
+                    video.src = video.getAttribute('data-src');
+                    var started = video.play();
+                    if (started && started.catch) { started.catch(function () { }); }
+                }
+            }
+
+            // Reviews: if the third-party widget has not rendered after a few seconds, say so.
+            window.setTimeout(function () {
+                var widget = document.getElementById('reviews-widget');
+                var note = document.getElementById('reviews-fallback');
+                if (widget && note && widget.childElementCount === 0) { note.hidden = false; }
+            }, 6000);
+        })();
+    </script>
+}
