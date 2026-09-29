@@ -35,7 +35,7 @@ namespace BarberLangeland
                 .AddIdentity<ApplicationUser, IdentityRole>(options =>
                 {
                     options.SignIn.RequireConfirmedAccount = false;
-                    // Applies to both sign-in paths: /Account/Login and the phone sign-in on the
+                    // Applies to both sign-in paths: /Account/Login and the email sign-in on the
                     // booking form. Five wrong passwords lock the account for fifteen minutes.
                     options.Lockout.MaxFailedAccessAttempts = 5;
                     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
@@ -70,7 +70,7 @@ namespace BarberLangeland
             });
 
             // Throttles the unauthenticated endpoints that look up accounts or check passwords
-            // (phone check, booking form, login) per client address.
+            // (email check, booking form, login) per client address.
             var lookupsPerMinute = builder.Configuration.GetValue("RateLimiting:CustomerLookupPerMinute", 10);
             builder.Services.AddRateLimiter(options =>
             {
@@ -99,7 +99,7 @@ namespace BarberLangeland
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
             builder.Services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
-            builder.Services.AddScoped<IPhoneIdentityService, PhoneIdentityService>();
+            builder.Services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
             builder.Services.AddScoped<IdentitySeeder>();
 
             var app = builder.Build();

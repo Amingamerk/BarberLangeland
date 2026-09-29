@@ -21,13 +21,18 @@ public sealed class IdentityHarness : IDisposable
         services.AddLogging();
         services.AddDataProtection();
         services.AddHttpContextAccessor();
-        services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_db.Options().Extensions.OfType<Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal.SqliteOptionsExtension>().First().Connection!));
+        services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_db.Connection));
         services
-            .AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false)
+            .AddIdentity<ApplicationUser, IdentityRole>(options =>
+            {
+                options.SignIn.RequireConfirmedAccount = false;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
         services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
-        services.AddScoped<IPhoneIdentityService, PhoneIdentityService>();
+        services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
 
         _root = services.BuildServiceProvider();
         _scope = _root.CreateScope();
@@ -36,7 +41,7 @@ public sealed class IdentityHarness : IDisposable
         accessor.HttpContext = new DefaultHttpContext { RequestServices = _scope.ServiceProvider };
     }
 
-    public IPhoneIdentityService Phone => _scope.ServiceProvider.GetRequiredService<IPhoneIdentityService>();
+    public ICustomerIdentityService Customers => _scope.ServiceProvider.GetRequiredService<ICustomerIdentityService>();
 
     public UserManager<ApplicationUser> Users => _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 

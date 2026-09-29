@@ -51,28 +51,27 @@
             const confirmButton = document.querySelector("[data-confirm-button]");
             const timeSelection = document.querySelector("[data-time-selection]");
 
-            const phoneInput = document.getElementById("Phone");
-            const countrySelect = document.querySelector("[data-country-select]");
-            const checkPhoneButton = document.querySelector("[data-check-phone-button]");
+            const emailInput = document.getElementById("Email");
+            const checkEmailButton = document.querySelector("[data-check-email-button]");
             const accountReveal = document.querySelector("[data-account-reveal]");
-            const phoneError = document.querySelector("[data-phone-error]");
+            const emailError = document.querySelector("[data-email-error]");
             // The reveal block is always server-rendered now, so its state has to come from
             // the flags the controller sets, not from whether the fields happen to exist.
-            // After a failed POST the controller round-trips PhoneConfirmed/IsKnownPhone so
-            // a returning customer does not get dropped back to the phone-only view.
-            let phoneIsKnown = accountReveal
-                ? accountReveal.dataset.phoneKnown === "true"
+            // After a failed POST the controller round-trips EmailChecked/IsKnownEmail so
+            // a returning customer does not get dropped back to the email-only view.
+            let emailIsKnown = accountReveal
+                ? accountReveal.dataset.emailKnown === "true"
                 : false;
-            let phoneChecked = accountReveal
-                ? accountReveal.dataset.phoneConfirmed === "true"
+            let emailChecked = accountReveal
+                ? accountReveal.dataset.emailChecked === "true"
                 : false;
-            let phoneCheckToken = 0;
+            let emailCheckToken = 0;
 
             const steps = Array.from(document.querySelectorAll("[data-step]"));
             const stepOrder = ["barber", "service", "datetime", "contact"];
 
             // The booking form already carries an antiforgery token; reuse it for the
-            // CheckPhone fetch so the endpoint can stay protected.
+            // CheckEmail fetch so the endpoint can stay protected.
             const antiforgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
             const antiforgeryToken = antiforgeryInput ? antiforgeryInput.value : "";
 
@@ -242,17 +241,17 @@
                     expandStep(target);
                 }
 
-                // Only the phone field is disabled until a time is picked; the revealed
-                // name/email/password inputs must stay enabled or their values would not
+                // Only the email field is disabled until a time is picked; the revealed
+                // name/phone/password inputs must stay enabled or their values would not
                 // post. syncConfirmState is the single source of truth for the CTA.
-                if (phoneInput) {
-                    phoneInput.disabled = !hasTime;
+                if (emailInput) {
+                    emailInput.disabled = !hasTime;
                 }
-                if (checkPhoneButton) {
-                    checkPhoneButton.disabled = !hasTime;
+                if (checkEmailButton) {
+                    checkEmailButton.disabled = !hasTime;
                 }
                 if (!hasTime) {
-                    resetPhoneCheck();
+                    resetEmailCheck();
                 }
                 timeSelection.setAttribute("aria-disabled", hasService ? "false" : "true");
             }
@@ -264,60 +263,57 @@
                 });
             }
 
-            // Returns the full international number, e.g. +4512345678, so the server can
-            // normalize it against stored E.164 values.
-            function fullPhoneNumber() {
-                if (!phoneInput) {
-                    return "";
-                }
-                const prefix = countrySelect && countrySelect.selectedIndex >= 0
-                    ? countrySelect.options[countrySelect.selectedIndex].text.trim()
-                    : "+45";
-                return (prefix + phoneInput.value.trim()).replace(/\s+/g, "");
+            // Same rule the server applies (one at sign, no spaces, a dotted domain); the server has
+            // the final say, this only saves a round trip for obvious typos.
+            function looksLikeEmail(value) {
+                // \x40 is the at sign; a literal one would be read as Razor code in this file.
+                return /^[^\s\x40]+\x40[^\s\x40.][^\s\x40]*\.[^\s\x40.]+$/.test(value);
             }
 
-            function showPhoneError(message) {
-                if (!phoneError) {
+            function showEmailError(message) {
+                if (!emailError) {
                     return;
                 }
                 // Text content only — the element permanently occupies its reserved line so
                 // the action buttons below never move when a message appears or clears.
                 // Toggling [hidden] instead would collapse the slot, because Bootstrap's
                 // [hidden] rule is !important and cannot be overridden by the reservation.
-                phoneError.textContent = message || "";
+                emailError.textContent = message || "";
             }
 
-            // Progressive reveal: ask the server whether the number is registered, then show
-            // either the password field (returning customer) or name/email/password (new).
-            // The endpoint deliberately returns only a boolean so it cannot be used to
-            // discover which numbers are registered.
-            function checkPhone() {
-                if (!phoneInput) {
+            // Progressive reveal: ask the server whether the email is registered, then show
+            // either the password field (returning customer) or name/phone/password (new).
+            // The endpoint returns only a boolean and is rate limited.
+            function checkEmail() {
+                if (!emailInput) {
                     return Promise.resolve(false);
                 }
 
-                const number = fullPhoneNumber();
+                const email = emailInput.value.trim();
 
-                if (!number || number.length < 4) {
-                    showPhoneError("Indtast et gyldigt telefonnummer.");
+                if (!looksLikeEmail(email)) {
+                    showEmailError("Indtast en gyldig e-mail.");
                     return Promise.resolve(false);
                 }
 
-                showPhoneError("");
-                const token = ++phoneCheckToken;
-                if (checkPhoneButton) {
-                    checkPhoneButton.disabled = true;
+                showEmailError("");
+                const token = ++emailCheckToken;
+                if (checkEmailButton) {
+                    checkEmailButton.disabled = true;
                 }
 
-                return fetch("/Booking/CheckPhone", {
+                return fetch("/Booking/CheckEmail", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         "RequestVerificationToken": antiforgeryToken
                     },
-                    body: JSON.stringify({ phone: number })
+                    body: JSON.stringify({ email: email })
                 })
                     .then(function (response) {
+                        if (response.status === 429) {
+                            return { message: "For mange forsøg. Vent et øjeblik og prøv igen." };
+                        }
                         if (!response.ok) {
                             return response.json().catch(function () { return {}; });
                         }
@@ -325,29 +321,29 @@
                     })
                     .then(function (data) {
                         // A slower earlier request must not overwrite a newer one.
-                        if (token !== phoneCheckToken) {
+                        if (token !== emailCheckToken) {
                             return false;
                         }
 
                         if (data.message) {
-                            showPhoneError(data.message);
+                            showEmailError(data.message);
                             return false;
                         }
 
-                        phoneIsKnown = data.exists === true;
-                        phoneChecked = true;
-                        renderAccountReveal(phoneIsKnown);
+                        emailIsKnown = data.exists === true;
+                        emailChecked = true;
+                        renderAccountReveal(emailIsKnown);
                         return true;
                     })
                     .catch(function () {
-                        if (token === phoneCheckToken) {
-                            showPhoneError("Kontakt kunne ikke nås. Prøv igen.");
+                        if (token === emailCheckToken) {
+                            showEmailError("Kontakt kunne ikke nås. Prøv igen.");
                         }
                         return false;
                     })
                     .finally(function () {
-                        if (token === phoneCheckToken && checkPhoneButton) {
-                            checkPhoneButton.disabled = false;
+                        if (token === emailCheckToken && checkEmailButton) {
+                            checkEmailButton.disabled = false;
                         }
                     });
             }
@@ -363,16 +359,23 @@
                 if (hint) {
                     hint.textContent = known
                         ? "Velkommen tilbage. Indtast din adgangskode for at fortsætte."
-                        : "Vi fandt ikke en konto med dette nummer. Opret din konto for at fortsætte.";
+                        : "Vi fandt ikke en konto med denne e-mail. Opret din konto for at fortsætte.";
                 }
 
-                ["Name", "Email"].forEach(function (id) {
-                    const field = accountReveal.querySelector("#" + id);
-                    if (field) {
-                        field.closest(".booking-field")?.classList.toggle("is-hidden", known);
-                        field.required = !known;
-                    }
-                });
+                const nameField = accountReveal.querySelector("#Name");
+                if (nameField) {
+                    nameField.closest(".booking-field")?.classList.toggle("is-hidden", known);
+                    nameField.required = !known;
+                }
+
+                const phoneField = accountReveal.querySelector("[data-phone-field]");
+                const phoneInput = accountReveal.querySelector("#Phone");
+                if (phoneField) {
+                    phoneField.classList.toggle("is-hidden", known);
+                }
+                if (phoneInput) {
+                    phoneInput.required = !known;
+                }
 
                 const passwordLabel = accountReveal.querySelector('label[for="Password"]');
                 if (passwordLabel) {
@@ -380,22 +383,22 @@
                 }
 
                 accountReveal.hidden = false;
-                if (checkPhoneButton) {
-                    checkPhoneButton.hidden = true;
+                if (checkEmailButton) {
+                    checkEmailButton.hidden = true;
                 }
                 syncConfirmState();
             }
 
-            // Confirm stays disabled until the phone has been checked and, when the number is
+            // Confirm stays disabled until the email has been checked and, when the account is
             // known, until a password has been typed.
             function syncConfirmState() {
                 if (!confirmButton) {
                     return;
                 }
                 const hasTime = bookingTimeInput.value !== "";
-                let ready = hasTime && phoneChecked;
+                let ready = hasTime && emailChecked;
 
-                if (ready && phoneIsKnown) {
+                if (ready && emailIsKnown) {
                     const password = accountReveal && accountReveal.querySelector("#Password");
                     ready = Boolean(password && password.value.trim().length > 0);
                 }
@@ -403,15 +406,15 @@
                 confirmButton.disabled = !ready;
             }
 
-            function resetPhoneCheck() {
-                phoneChecked = false;
-                phoneIsKnown = false;
-                showPhoneError("");
+            function resetEmailCheck() {
+                emailChecked = false;
+                emailIsKnown = false;
+                showEmailError("");
                 if (accountReveal) {
                     accountReveal.hidden = true;
                 }
-                if (checkPhoneButton) {
-                    checkPhoneButton.hidden = false;
+                if (checkEmailButton) {
+                    checkEmailButton.hidden = false;
                 }
                 syncConfirmState();
             }
@@ -845,22 +848,17 @@
 
             // Any change to the number invalidates the previous check, so the reveal is
             // collapsed again rather than left showing a stale known/unknown verdict.
-            if (phoneInput) {
-                phoneInput.addEventListener("input", resetPhoneCheck);
-            }
-            if (countrySelect) {
-                countrySelect.addEventListener("change", resetPhoneCheck);
-            }
-            if (checkPhoneButton) {
-                checkPhoneButton.addEventListener("click", checkPhone);
-            }
-            if (phoneInput) {
-                phoneInput.addEventListener("keydown", function (event) {
+            if (emailInput) {
+                emailInput.addEventListener("input", resetEmailCheck);
+                emailInput.addEventListener("keydown", function (event) {
                     if (event.key === "Enter") {
                         event.preventDefault();
-                        checkPhone();
+                        checkEmail();
                     }
                 });
+            }
+            if (checkEmailButton) {
+                checkEmailButton.addEventListener("click", checkEmail);
             }
             const passwordInput = accountReveal ? accountReveal.querySelector("#Password") : null;
             if (passwordInput) {
@@ -873,8 +871,8 @@
             // On a redisplay after a failed POST the reveal must be rebuilt from the flags
             // the controller sent back, otherwise a returning customer would be shown the
             // phone-only view again and lose what they had typed.
-            if (phoneChecked && accountReveal) {
-                renderAccountReveal(phoneIsKnown);
+            if (emailChecked && accountReveal) {
+                renderAccountReveal(emailIsKnown);
             }
 
             renderSteps();
