@@ -20,7 +20,7 @@
         // read as an unused free-text field and invited its own deletion.
         public string? CustomerName { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; }
 
         public bool IsConfirmed { get; set; }
 

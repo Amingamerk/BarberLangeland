@@ -1,0 +1,27 @@
+@model bool
+@{
+    ViewData["Title"] = Model ? "E-mail bekræftet" : "Linket virker ikke";
+}
+
+<section class="container section-padding">
+    <div class="booking-confirm" role="status">
+        @if (Model)
+        {
+            <div class="booking-confirm__badge" aria-hidden="true">✓</div>
+            <h1 class="booking-confirm__title">Tak, din e-mail er bekræftet</h1>
+            <p class="booking-confirm__subtitle">Dine bookinger er nu bekræftede.</p>
+            <a asp-controller="Account" asp-action="MyBookings" class="btn-book rounded-pill px-4">Se mine bookinger</a>
+        }
+        else
+        {
+            <div class="booking-confirm__badge booking-confirm__badge--error" aria-hidden="true">!</div>
+            <h1 class="booking-confirm__title">Linket virker ikke</h1>
+            <p class="booking-confirm__subtitle">
+                Linket er udløbet, allerede brugt på en anden konto, eller kopieret forkert.
+                Log ind og vælg <em>Mine bookinger</em> for at få en ny bekræftelsesmail.
+                Hvis der er gået mere end 24 timer, kan bookingen være annulleret.
+            </p>
+            <a asp-controller="Account" asp-action="Login" class="btn-book rounded-pill px-4">Log ind</a>
+        }
+    </div>
+</section>

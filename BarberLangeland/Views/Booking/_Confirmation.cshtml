@@ -4,13 +4,36 @@
    back link into the wizard: the only way out is "Til forsiden", so a customer cannot
    re-submit the same slot from a stale form. *@
 <div class="booking-confirm" role="status">
-    <div class="booking-confirm__badge" aria-hidden="true">✓</div>
+    <div class="booking-confirm__badge" aria-hidden="true">@(Model.EmailVerificationPending ? "✉" : "✓")</div>
 
-    <h1 class="booking-confirm__title">Booking bekræftet</h1>
+    <h1 class="booking-confirm__title">@(Model.EmailVerificationPending ? "Bekræft din e-mail" : "Booking bekræftet")</h1>
 
     @if (!string.IsNullOrWhiteSpace(Model.ConfirmationMessage))
     {
         <p class="booking-confirm__subtitle">@Model.ConfirmationMessage</p>
+    }
+
+    @if (Model.EmailVerificationPending)
+    {
+        <div class="booking-confirm__notice" data-email-verification-notice>
+            @if (Model.EmailVerificationSent)
+            {
+                <p>
+                    Vi har sendt en mail til <strong>@Model.ConfirmedEmail</strong> med et link.
+                    Klik på linket <strong>inden for 24 timer</strong> for at bekræfte din booking.
+                    Ellers annulleres bookingen, og tiden frigives.
+                </p>
+                <p>Ingen mail? Kig i uønsket post, eller log ind og vælg <em>Mine bookinger</em> for at få en ny.</p>
+            }
+            else
+            {
+                <p>
+                    Vi kunne ikke sende bekræftelsesmailen til <strong>@Model.ConfirmedEmail</strong> lige nu.
+                    Log ind og vælg <em>Mine bookinger</em> for at få en ny mail, senest inden for 24 timer.
+                    Ellers annulleres bookingen, og tiden frigives.
+                </p>
+            }
+        </div>
     }
 
     <dl class="booking-confirm__summary">

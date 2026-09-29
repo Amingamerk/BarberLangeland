@@ -18,12 +18,19 @@ namespace BarberLangeland.Tests.Support;
 /// The real application pipeline (routing, auth, antiforgery, views) running in-process in the
 /// Production environment, with SQL Server swapped for an in-memory SQLite database.
 /// </summary>
-public sealed class AppFactory : WebApplicationFactory<Program>
+public class AppFactory : WebApplicationFactory<Program>
 {
     public const string AdminEmail = "admin@example.com";
     public const string AdminPassword = "Admin-Test-1234!";
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private FakeEmailSender? _emails;
+
+    /// <summary>Whether the fake mail server counts as configured (which switches email verification on).</summary>
+    protected virtual bool EmailConfigured => false;
+
+    /// <summary>The mail the application tried to send.</summary>
+    public FakeEmailSender Emails => _emails ??= new FakeEmailSender(EmailConfigured);
 
     public AppFactory()
     {
@@ -49,6 +56,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_connection));
 
+            services.RemoveAll<ISiteEmailSender>();
+            services.AddSingleton<ISiteEmailSender>(Emails);
+
             // Program.cs runs Database.Migrate() (SQL Server migrations) at start-up; create the
             // schema from the model first. The migration attempt then fails and is logged by Program.
             var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options;
@@ -57,12 +67,24 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         });
     }
 
-    public HttpClient CreateBrowser() => CreateClient(new WebApplicationFactoryClientOptions
+    private static int _clientCounter;
+
+    /// <summary>
+    /// A cookie-keeping client that appears to come from its own address (via X-Forwarded-For,
+    /// as behind Azure), so the per-IP rate limit only affects the test that sets out to hit it.
+    /// </summary>
+    public HttpClient CreateBrowser()
     {
-        AllowAutoRedirect = false,
-        HandleCookies = true,
-        BaseAddress = new Uri("https://localhost")
-    });
+        var client = CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+        var n = Interlocked.Increment(ref _clientCounter);
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.{n / 65000}.{n / 250 % 250}.{n % 250 + 1}");
+        return client;
+    }
 
     public async Task EnsureAdminAsync()
     {

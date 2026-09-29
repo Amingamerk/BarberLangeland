@@ -163,7 +163,7 @@ public class WebTests : IClassFixture<AppFactory>
         Assert.True((int)response.StatusCode < 500, $"Got HTTP {(int)response.StatusCode}.");
     }
 
-    // ---------- CheckPhone endpoint ----------
+    // ---------- CheckEmail endpoint ----------
 
     private async Task<(HttpClient Client, string Token)> BookingSessionAsync()
     {
@@ -171,68 +171,97 @@ public class WebTests : IClassFixture<AppFactory>
         return (client, await client.GetTokenAsync("/Booking"));
     }
 
-    private static HttpRequestMessage CheckPhone(string token, string body) => new(HttpMethod.Post, "/Booking/CheckPhone")
+    private static HttpRequestMessage CheckEmail(string token, string body) => new(HttpMethod.Post, "/Booking/CheckEmail")
     {
         Headers = { { "RequestVerificationToken", token } },
         Content = new StringContent(body, Encoding.UTF8, "application/json")
     };
 
-    [Fact(DisplayName = "CheckPhone without an antiforgery token is rejected")]
-    public async Task CheckPhone_requires_antiforgery_token()
+    [Fact(DisplayName = "CheckEmail without an antiforgery token is rejected")]
+    public async Task CheckEmail_requires_antiforgery_token()
     {
-        var response = await _factory.CreateBrowser().PostAsJsonAsync("/Booking/CheckPhone", new { Phone = "32123456" });
+        var response = await _factory.CreateBrowser().PostAsJsonAsync("/Booking/CheckEmail", new { Email = "kunde@example.com" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Theory(DisplayName = "CheckPhone rejects invalid, malformed and null bodies with 400")]
-    [InlineData("{\"Phone\":\"abc\"}")]
+    [Theory(DisplayName = "CheckEmail rejects invalid, malformed and null bodies with 400")]
+    [InlineData("{\"Email\":\"abc\"}")]
+    [InlineData("{\"Email\":\"a@b\"}")]
+    [InlineData("{\"Email\":\"\"}")]
     [InlineData("{bad")]
     [InlineData("null")]
-    public async Task CheckPhone_rejects_bad_bodies(string body)
+    public async Task CheckEmail_rejects_bad_bodies(string body)
     {
         var (client, token) = await BookingSessionAsync();
-        var response = await client.SendAsync(CheckPhone(token, body));
+        var response = await client.SendAsync(CheckEmail(token, body));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact(DisplayName = "CheckPhone does not reveal whether a phone number is registered")]
-    public async Task CheckPhone_does_not_leak_registration_status()
+    [Fact(DisplayName = "CheckEmail tells the form only whether an email is registered, nothing else about the account")]
+    public async Task CheckEmail_returns_only_the_exists_flag()
     {
         var (client, token) = await BookingSessionAsync();
         await RegisterCustomerAsync("32123400", "enumeration@example.com");
 
-        var known = await (await client.SendAsync(CheckPhone(token, "{\"Phone\":\"32123400\"}"))).Content.ReadAsStringAsync();
-        var unknown = await (await client.SendAsync(CheckPhone(token, "{\"Phone\":\"32123499\"}"))).Content.ReadAsStringAsync();
+        var known = await (await client.SendAsync(CheckEmail(token, "{\"Email\":\"Enumeration@Example.com\"}"))).Content.ReadAsStringAsync();
+        var unknown = await (await client.SendAsync(CheckEmail(token, "{\"Email\":\"ukendt@example.com\"}"))).Content.ReadAsStringAsync();
 
-        Assert.Equal(unknown, known);
+        Assert.Equal("{\"exists\":true}", known);
+        Assert.Equal("{\"exists\":false}", unknown);
     }
 
-    [Fact(DisplayName = "CheckPhone is rate limited")]
-    public async Task CheckPhone_is_rate_limited()
+    [Fact(DisplayName = "CheckEmail is rate limited")]
+    public async Task CheckEmail_is_rate_limited()
     {
         var (client, token) = await BookingSessionAsync();
         var statuses = new List<HttpStatusCode>();
 
         for (var i = 0; i < 40; i++)
         {
-            statuses.Add((await client.SendAsync(CheckPhone(token, "{\"Phone\":\"32123499\"}"))).StatusCode);
+            statuses.Add((await client.SendAsync(CheckEmail(token, "{\"Email\":\"ukendt@example.com\"}"))).StatusCode);
         }
 
         Assert.Contains(HttpStatusCode.TooManyRequests, statuses);
     }
 
+    [Fact(DisplayName = "The old phone lookup endpoint is gone")]
+    public async Task CheckPhone_endpoint_is_removed()
+    {
+        var (client, token) = await BookingSessionAsync();
+        var request = new HttpRequestMessage(HttpMethod.Post, "/Booking/CheckPhone")
+        {
+            Headers = { { "RequestVerificationToken", token } },
+            Content = new StringContent("{\"Phone\":\"32123456\"}", Encoding.UTF8, "application/json")
+        };
+
+        var status = (await client.SendAsync(request)).StatusCode;
+
+        Assert.True(status is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed, $"POST /Booking/CheckPhone returned {(int)status}.");
+    }
+
+    [Fact(DisplayName = "The booking page asks for the email first and looks it up with CheckEmail")]
+    public async Task Booking_page_is_email_first()
+    {
+        var html = await (await _factory.CreateBrowser().GetAsync("/Booking")).BodyAsync();
+
+        Assert.Contains("data-check-email-button", html);
+        Assert.Contains("/Booking/CheckEmail", html);
+        Assert.DoesNotContain("/Booking/CheckPhone", html);
+        Assert.DoesNotContain("data-check-phone-button", html);
+    }
+
     // ---------- Booking wizard POST ----------
 
-    private static (string, string)[] BookingFields(string date, string time, string phone, string? name, string? email,
-        string password, int barberId = 1, int serviceId = 1)
+    private static (string, string)[] BookingFields(string date, string time, string email, string? name,
+        string? phone, string password, int barberId = 1, int serviceId = 1)
     {
         var fields = new List<(string, string)>
         {
             ("BarberId", barberId.ToString()), ("ServiceId", serviceId.ToString()),
-            ("BookingDate", date), ("BookingTime", time), ("Phone", phone), ("Password", password)
+            ("BookingDate", date), ("BookingTime", time), ("Email", email), ("Password", password)
         };
         if (name != null) fields.Add(("Name", name));
-        if (email != null) fields.Add(("Email", email));
+        if (phone != null) fields.Add(("Phone", phone));
         return fields.ToArray();
     }
 
@@ -245,7 +274,7 @@ public class WebTests : IClassFixture<AppFactory>
         var date = TestData.FutureDate(DayOfWeek.Monday).AddDays(35).ToString("yyyy-MM-dd");
         var time = new TimeSpan(9, 30, 0).Add(TimeSpan.FromMinutes(30 * slot)).ToString();
         return await client.PostFormAsync("/Booking", token,
-            BookingFields(date, time, phone, "Kunde", email, StrongPassword));
+            BookingFields(date, time, email, "Kunde", phone, StrongPassword));
     }
 
     [Fact(DisplayName = "Posting the booking form without an antiforgery token is rejected")]
@@ -267,19 +296,51 @@ public class WebTests : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Vælg en frisør.", body);
         Assert.Contains("Vælg en behandling.", body);
-        Assert.Contains("Indtast dit telefonnummer.", body);
+        Assert.Contains("Indtast din e-mail.", body);
     }
 
-    [Fact(DisplayName = "A booking with an invalid phone number is refused")]
+    [Fact(DisplayName = "A new customer with an invalid phone number is refused")]
     public async Task Booking_with_invalid_phone_is_refused()
     {
         var (client, token) = await BookingSessionAsync();
         var date = TestData.FutureDate(DayOfWeek.Wednesday).ToString("yyyy-MM-dd");
 
         var response = await client.PostFormAsync("/Booking", token,
-            BookingFields(date, "10:00:00", "12", "Kunde", "kunde@example.com", StrongPassword));
+            BookingFields(date, "10:00:00", "kunde@example.com", "Kunde", "12", StrongPassword));
 
         Assert.Contains("Indtast et gyldigt telefonnummer.", await response.BodyAsync());
+    }
+
+    [Theory(DisplayName = "A booking with an invalid email address is refused with a Danish message")]
+    [InlineData("abc")]
+    [InlineData("kunde@example")]
+    [InlineData("not an email")]
+    public async Task Booking_with_invalid_email_is_refused(string email)
+    {
+        var (client, token) = await BookingSessionAsync();
+        var date = TestData.FutureDate(DayOfWeek.Wednesday).ToString("yyyy-MM-dd");
+
+        var response = await client.PostFormAsync("/Booking", token,
+            BookingFields(date, "10:00:00", email, "Kunde", "32123456", StrongPassword));
+        var body = await response.BodyAsync();
+
+        Assert.Contains("Indtast en gyldig e-mail.", body);
+        Assert.DoesNotContain("er bekræftet", body);
+    }
+
+    [Fact(DisplayName = "A new customer must give name, phone number and password")]
+    public async Task New_customer_must_give_name_phone_and_password()
+    {
+        var (client, token) = await BookingSessionAsync();
+        var date = TestData.FutureDate(DayOfWeek.Wednesday).ToString("yyyy-MM-dd");
+
+        var response = await client.PostFormAsync("/Booking", token,
+            BookingFields(date, "10:00:00", "helt-ny@example.com", null, null, ""));
+        var body = await response.BodyAsync();
+
+        Assert.Contains("Indtast dit navn.", body);
+        Assert.Contains("Indtast dit telefonnummer.", body);
+        Assert.Contains("Vælg en adgangskode.", body);
     }
 
     [Fact(DisplayName = "User input is HTML-encoded when the booking form is redisplayed")]
@@ -289,10 +350,12 @@ public class WebTests : IClassFixture<AppFactory>
 
         var response = await client.PostFormAsync("/Booking", token,
             ("BarberId", "1"), ("ServiceId", "1"),
+            ("Email", "\"><script>alert(3)</script>"),
             ("Name", "<script>alert(1)</script>"), ("Phone", "<img src=x onerror=alert(2)>"));
         var raw = await response.Content.ReadAsStringAsync();
 
         Assert.DoesNotContain("<script>alert(1)</script>", raw);
+        Assert.DoesNotContain("<script>alert(3)</script>", raw);
         Assert.DoesNotContain("<img src=x onerror", raw);
     }
 
@@ -302,7 +365,7 @@ public class WebTests : IClassFixture<AppFactory>
         var (client, token) = await BookingSessionAsync();
 
         var response = await client.PostFormAsync("/Booking", token,
-            BookingFields("xx", "99:99", "32123456", null, null, ""));
+            BookingFields("xx", "99:99", "kunde@example.com", null, "32123456", ""));
         var body = await response.BodyAsync();
 
         Assert.DoesNotContain("is not valid for", body);
@@ -316,7 +379,7 @@ public class WebTests : IClassFixture<AppFactory>
         var date = TestData.FutureDate(DayOfWeek.Friday).AddDays(14).ToString("yyyy-MM-dd");
 
         var first = await client.PostFormAsync("/Booking", token,
-            BookingFields(date, "11:00:00", "32123411", "Første Kunde", "forste@example.com", StrongPassword));
+            BookingFields(date, "11:00:00", "forste@example.com", "Første Kunde", "32123411", StrongPassword));
         Assert.Contains("er bekræftet", await first.BodyAsync());
 
         var availability = await client.GetStringAsync($"/Booking/Availability?barberId=1&serviceId=1&bookingDate={date}&days=1");
@@ -325,7 +388,7 @@ public class WebTests : IClassFixture<AppFactory>
         var other = _factory.CreateBrowser();
         var otherToken = await other.GetTokenAsync("/Booking");
         var second = await other.PostFormAsync("/Booking", otherToken,
-            BookingFields(date, "11:00:00", "32123412", "Anden Kunde", "anden@example.com", StrongPassword));
+            BookingFields(date, "11:00:00", "anden@example.com", "Anden Kunde", "32123412", StrongPassword));
         var secondBody = await second.BodyAsync();
 
         Assert.DoesNotContain("er bekræftet", secondBody);
@@ -340,28 +403,48 @@ public class WebTests : IClassFixture<AppFactory>
         var date = TestData.FutureDate(DayOfWeek.Thursday).AddDays(21).ToString("yyyy-MM-dd");
 
         var response = await client.PostFormAsync("/Booking", token,
-            BookingFields(date, "12:00:00", "32123422", "Svag Kunde", "svag@example.com", "abc"));
+            BookingFields(date, "12:00:00", "svag@example.com", "Svag Kunde", "32123422", "abc"));
 
         Assert.DoesNotContain("er bekræftet", await response.BodyAsync());
         var availability = await client.GetStringAsync($"/Booking/Availability?barberId=1&serviceId=1&bookingDate={date}&days=1");
         Assert.Contains("\"12:00\"", availability);
     }
 
-    [Fact(DisplayName = "A returning customer must give the right password to book")]
+    [Fact(DisplayName = "A returning customer books with just email and password, in any letter case")]
     public async Task Returning_customer_needs_password()
     {
-        await RegisterCustomerAsync("32123433", "retur@example.com");
+        await RegisterCustomerAsync("32123433", "Retur@Example.com");
         var client = _factory.CreateBrowser();
         var token = await client.GetTokenAsync("/Booking");
         var date = TestData.FutureDate(DayOfWeek.Tuesday).AddDays(21).ToString("yyyy-MM-dd");
 
         var wrong = await client.PostFormAsync("/Booking", token,
-            BookingFields(date, "13:00:00", "32123433", null, null, "Wrong-password-1"));
-        Assert.Contains("Telefonnummer eller adgangskode er forkert.", await wrong.BodyAsync());
+            BookingFields(date, "13:00:00", "retur@example.com", null, null, "Wrong-password-1"));
+        Assert.Contains("E-mail eller adgangskode er forkert", await wrong.BodyAsync());
 
         var right = await client.PostFormAsync("/Booking", token,
-            BookingFields(date, "13:00:00", "32123433", null, null, StrongPassword));
+            BookingFields(date, "13:00:00", "retur@example.com", null, null, StrongPassword));
         Assert.Contains("er bekræftet", await right.BodyAsync());
+    }
+
+    [Fact(DisplayName = "The booking form locks a customer out after repeated wrong passwords")]
+    public async Task Booking_form_locks_out_after_repeated_wrong_passwords()
+    {
+        await RegisterCustomerAsync("32123466", "booking-laas@example.com");
+        var client = _factory.CreateBrowser();
+        var token = await client.GetTokenAsync("/Booking");
+        var date = TestData.FutureDate(DayOfWeek.Tuesday).AddDays(28).ToString("yyyy-MM-dd");
+
+        for (var i = 0; i < 6; i++)
+        {
+            await client.PostFormAsync("/Booking", token,
+                BookingFields(date, "14:00:00", "booking-laas@example.com", null, null, $"Wrong-password-{i}!"));
+        }
+
+        var response = await client.PostFormAsync("/Booking", token,
+            BookingFields(date, "14:00:00", "booking-laas@example.com", null, null, StrongPassword));
+
+        Assert.DoesNotContain("er bekræftet", await response.BodyAsync());
     }
 
     // ---------- Login and admin ----------

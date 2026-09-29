@@ -6,6 +6,28 @@
 <section class="container section-padding">
     <h1 class="section-title">Mine bookinger</h1>
 
+    @if (Model.EmailUnconfirmed)
+    {
+        <div class="account-verify-banner" role="alert" data-email-unconfirmed>
+            <p>
+                <strong>Bekræft din e-mail.</strong>
+                Dine bookinger holder tiden, men tæller først, når du har klikket på linket i mailen til
+                <strong>@Model.Email</strong>. Gør du det ikke inden for 24 timer, annulleres de.
+            </p>
+            @if ((string?)TempData["ConfirmationResend"] == "sent")
+            {
+                <p class="account-verify-banner__result">Vi har sendt en ny mail. Kig også i uønsket post.</p>
+            }
+            else if ((string?)TempData["ConfirmationResend"] == "failed")
+            {
+                <p class="account-verify-banner__result">Mailen kunne ikke sendes lige nu. Prøv igen om lidt.</p>
+            }
+            <form asp-controller="Account" asp-action="ResendConfirmation" method="post">
+                <button type="submit" class="btn-book rounded-pill px-4">Send bekræftelsesmail igen</button>
+            </form>
+        </div>
+    }
+
     @if (Model.Upcoming.Count == 0 && Model.Past.Count == 0)
     {
         <div class="booking-empty-state">
