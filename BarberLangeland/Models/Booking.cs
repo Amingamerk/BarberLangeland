@@ -22,6 +22,12 @@
 
         public DateTime CreatedAt { get; set; }
 
+        /// <summary>
+        /// The service's price when the booking was made, so a later price change does not
+        /// rewrite what an existing booking cost.
+        /// </summary>
+        public decimal Price { get; set; }
+
         public bool IsConfirmed { get; set; }
 
         public bool IsCancelled { get; set; }

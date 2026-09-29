@@ -60,6 +60,12 @@ namespace BarberLangeland.Controllers
             var barber = await _context.Barbers.FindAsync(model.BarberId);
             var service = await _context.Services.FindAsync(model.ServiceId);
 
+            // A hidden service cannot be booked, even from a page that was opened before it was hidden.
+            if (service is { IsActive: false })
+            {
+                service = null;
+            }
+
             if (barber == null)
             {
                 ModelState.AddModelError(nameof(model.BarberId), "Vælg en frisør.");
@@ -178,6 +184,7 @@ namespace BarberLangeland.Controllers
                 // approve each one. The exception is a customer whose email is not confirmed yet:
                 // the booking holds the time, but only counts once the link in the mail is clicked
                 // (within 24 hours, otherwise the account and its bookings are removed).
+                Price = service.Price,
                 IsConfirmed = user.EmailConfirmed,
                 CreatedAt = _clock.LocalNow(),
                 UserId = user.Id,
@@ -287,9 +294,13 @@ namespace BarberLangeland.Controllers
             // grid; cap it so a hand-crafted query cannot ask for an unbounded scan.
             days = Math.Clamp(days, 1, 62);
 
+            // A hidden service has no bookable times. Ask for a service id that does not exist so
+            // the answer has the same shape as for any unknown service: days with no slots.
+            var offered = await _context.Services.AnyAsync(s => s.Id == serviceId && s.IsActive);
+
             var availability = await _availabilityService.GetAvailableDaysAsync(
                 barberId,
-                serviceId,
+                offered ? serviceId : 0,
                 bookingDate,
                 days);
 
@@ -320,7 +331,9 @@ namespace BarberLangeland.Controllers
 
             model.Services = await _context.Services
                 .AsNoTracking()
-                .OrderBy(service => service.Id)
+                .Where(service => service.IsActive)
+                .OrderBy(service => service.SortOrder)
+                .ThenBy(service => service.Id)
                 .Select(service => new ServiceOptionViewModel
                 {
                     Id = service.Id,

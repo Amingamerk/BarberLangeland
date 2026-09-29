@@ -50,7 +50,7 @@ namespace BarberLangeland.Controllers
                 .ToListAsync();
 
             model.Services = await _context.Services
-                .OrderBy(s => s.Name)
+                .OrderBy(s => s.SortOrder).ThenBy(s => s.Id)
                 .ToListAsync();
 
             var bookings = await _context.Bookings
@@ -252,6 +252,11 @@ namespace BarberLangeland.Controllers
 
                 booking.BookingTime = newStart;
                 booking.BarberId = barber.Id;
+                if (booking.ServiceId != service.Id)
+                {
+                    // A different treatment: the booking now costs what that treatment costs.
+                    booking.Price = service.Price;
+                }
                 booking.ServiceId = service.Id;
                 // The stored duration must follow the new service, otherwise the booking keeps
                 // occupying the old treatment's worth of time.

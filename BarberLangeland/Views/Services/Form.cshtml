@@ -1,0 +1,83 @@
+@model BarberLangeland.ViewModels.ServiceFormViewModel
+
+@{
+    var isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Tilføj behandling" : "Rediger behandling";
+}
+
+<section class="container section-padding admin-barbers">
+    <h1 class="section-title">@ViewData["Title"]</h1>
+
+    <form asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@(isNew ? null : Model.Id)" method="post" class="admin-barbers__form">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label">Navn</label>
+            <input asp-for="Name" class="form-control" maxlength="60" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label">Beskrivelse</label>
+            <input asp-for="Description" class="form-control" maxlength="200" />
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-6 mb-3">
+                <label asp-for="DurationMinutes" class="form-label">Varighed (minutter)</label>
+                <input asp-for="DurationMinutes" type="number" min="5" max="240" step="5" class="form-control"
+                       data-duration-input data-weekday-minutes="@Model.WeekdayOpenMinutes" data-saturday-minutes="@Model.SaturdayOpenMinutes" />
+                <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+            </div>
+            <div class="col-sm-6 mb-3">
+                <label asp-for="Price" class="form-label">Pris (kr.)</label>
+                <input asp-for="Price" type="number" min="0" max="10000" step="0.01" class="form-control" />
+                <span asp-validation-for="Price" class="text-danger"></span>
+            </div>
+        </div>
+
+        <p class="form-text" data-slot-preview aria-live="polite"></p>
+
+        @if (!isNew)
+        {
+            <p class="form-text">Ændringer gælder kun nye bookinger; eksisterende bookinger beholder deres varighed og pris.</p>
+        }
+
+        <div class="admin-barbers__form-actions">
+            <button type="submit" class="btn btn-book rounded-pill px-4">@(isNew ? "Opret" : "Gem")</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Annuller</a>
+        </div>
+    </form>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Preview of how many start times a duration leaves on the booking calendar. Start times
+            // are every 30 minutes from opening, and the treatment has to finish before closing time,
+            // the same rule the booking calendar uses (BookingAvailabilityService).
+            var input = document.querySelector('[data-duration-input]');
+            var preview = document.querySelector('[data-slot-preview]');
+            if (!input || !preview) { return; }
+
+            var weekday = parseInt(input.getAttribute('data-weekday-minutes'), 10) || 0;
+            var saturday = parseInt(input.getAttribute('data-saturday-minutes'), 10) || 0;
+
+            function slots(openMinutes, duration) {
+                return duration > 0 && duration <= openMinutes ? Math.floor((openMinutes - duration) / 30) + 1 : 0;
+            }
+
+            function update() {
+                var duration = parseInt(input.value, 10);
+                if (!duration || duration < 5) { preview.textContent = ''; return; }
+                preview.textContent = 'Med ' + duration + ' minutter kan der bookes op til '
+                    + slots(weekday, duration) + ' tider på en hverdag og '
+                    + slots(saturday, duration) + ' tider om lørdagen (hver halve time).';
+            }
+
+            input.addEventListener('input', update);
+            update();
+        })();
+    </script>
+}

@@ -1,0 +1,79 @@
+@model IEnumerable<BarberLangeland.Models.Service>
+
+@{
+    ViewData["Title"] = "Behandlinger";
+    var counts = (Dictionary<int, int>)ViewData["BookingCounts"]!;
+    var list = Model.ToList();
+}
+
+<section class="container section-padding admin-barbers">
+    <div class="admin-barbers__header">
+        <h1 class="section-title">Behandlinger</h1>
+        <a asp-action="Create" class="btn btn-book rounded-pill px-4">Tilføj behandling</a>
+    </div>
+
+    @if (TempData["ServiceErrorOk"] is string ok)
+    {
+        <div class="alert alert-success" role="status">@ok</div>
+    }
+    @if (TempData["ServiceError"] is string error)
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+    }
+
+    <p class="site-note">
+        Behandlinger slettes aldrig, men skjules. En skjult behandling kan ikke bookes og vises ikke på siden,
+        men eksisterende bookinger beholder den. Ændringer i pris og varighed gælder kun nye bookinger.
+    </p>
+
+    <table class="admin-schedule__table" data-services-table>
+        <thead>
+            <tr>
+                <th scope="col">Rækkefølge</th>
+                <th scope="col">Navn</th>
+                <th scope="col">Varighed</th>
+                <th scope="col">Pris</th>
+                <th scope="col">Bookinger</th>
+                <th scope="col">Status</th>
+                <th scope="col">Handling</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < list.Count; i++)
+            {
+                var service = list[i];
+                <tr class="@(service.IsActive ? null : "is-hidden-service")">
+                    <td data-label="Rækkefølge">
+                        <form asp-action="Move" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@service.Id" />
+                            <input type="hidden" name="direction" value="up" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@(i == 0)" aria-label="Flyt @service.Name op">↑</button>
+                        </form>
+                        <form asp-action="Move" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@service.Id" />
+                            <input type="hidden" name="direction" value="down" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" disabled="@(i == list.Count - 1)" aria-label="Flyt @service.Name ned">↓</button>
+                        </form>
+                    </td>
+                    <td data-label="Navn">
+                        <strong>@service.Name</strong>
+                        <span class="admin-schedule__phone">@service.Description</span>
+                    </td>
+                    <td data-label="Varighed">@service.DurationMinutes min.</td>
+                    <td data-label="Pris">@service.Price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) kr.</td>
+                    <td data-label="Bookinger">@(counts.TryGetValue(service.Id, out var n) ? n : 0)</td>
+                    <td data-label="Status">
+                        <span class="badge @(service.IsActive ? "text-bg-success" : "text-bg-secondary")">@(service.IsActive ? "Synlig" : "Skjult")</span>
+                    </td>
+                    <td class="admin-schedule__actions">
+                        <a asp-action="Edit" asp-route-id="@service.Id" class="btn btn-sm btn-outline-secondary">Rediger</a>
+                        <form asp-action="ToggleActive" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@service.Id" />
+                            <button type="submit" class="btn btn-sm @(service.IsActive ? "btn-outline-danger" : "btn-outline-primary")">@(service.IsActive ? "Skjul" : "Vis")</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
