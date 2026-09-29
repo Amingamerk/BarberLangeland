@@ -41,6 +41,31 @@ namespace BarberLangeland.Services
             };
         }
 
+        public ShopStatus GetShopStatus(DateTime localNow)
+        {
+            var today = localNow.Date;
+
+            if (OpeningHours.TryGetValue(today.DayOfWeek, out var hours)
+                && localNow >= today.Add(hours.Open)
+                && localNow < today.Add(hours.Close))
+            {
+                return new ShopStatus(true, today.Add(hours.Close));
+            }
+
+            // Closed: find the next opening, today if it has not opened yet, else the next open day.
+            for (var offset = 0; offset <= 7; offset++)
+            {
+                var day = today.AddDays(offset);
+                if (OpeningHours.TryGetValue(day.DayOfWeek, out var dayHours)
+                    && day.Add(dayHours.Open) > localNow)
+                {
+                    return new ShopStatus(false, day.Add(dayHours.Open));
+                }
+            }
+
+            return new ShopStatus(false, today.AddDays(7));
+        }
+
         private static OpeningHoursViewModel OpeningHoursFor(DayOfWeek day, string label)
         {
             if (!OpeningHours.TryGetValue(day, out var hours))

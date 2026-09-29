@@ -5,18 +5,23 @@ using BarberLangeland.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace BarberLangeland.Controllers
 {
     public class HomeController : Controller
     {
+        private static readonly CultureInfo Danish = new("da-DK");
+
         private readonly ApplicationDbContext _context;
         private readonly IBookingAvailabilityService _availability;
+        private readonly TimeProvider _clock;
 
-        public HomeController(ApplicationDbContext context, IBookingAvailabilityService availability)
+        public HomeController(ApplicationDbContext context, IBookingAvailabilityService availability, TimeProvider clock)
         {
             _context = context;
             _availability = availability;
+            _clock = clock;
         }
 
         public async Task<IActionResult> Index()
@@ -44,9 +49,10 @@ namespace BarberLangeland.Controllers
         {
             var hours = _availability.GetOpeningHours();
 
-            // The server clock is UTC on Azure; the shop's weekday is what matters here.
-            var today = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, CopenhagenZone()).DayOfWeek;
-            var todayIndex = ((int)today + 6) % 7; // GetOpeningHours lists Monday first
+            // Everything here is in shop-local (Copenhagen) time; the server clock is UTC on Azure.
+            var now = _clock.LocalNow();
+            var todayIndex = ((int)now.DayOfWeek + 6) % 7; // GetOpeningHours lists Monday first
+            var status = _availability.GetShopStatus(now);
 
             return new SitePageViewModel
             {
@@ -55,20 +61,31 @@ namespace BarberLangeland.Controllers
                     ? await _context.Barbers.AsNoTracking().OrderBy(b => b.Name).ToListAsync()
                     : [],
                 OpeningHours = hours,
-                Today = todayIndex < hours.Count ? hours[todayIndex] : null
+                Today = todayIndex < hours.Count ? hours[todayIndex] : null,
+                Status = status,
+                StatusText = StatusText(status, now)
             };
         }
 
-        private static TimeZoneInfo CopenhagenZone()
+        /// <summary>The one-line open/closed message shown in the hero.</summary>
+        internal static string StatusText(ShopStatus status, DateTime now)
         {
-            try
+            var time = status.NextChange.ToString("HH:mm", CultureInfo.InvariantCulture);
+
+            if (status.IsOpen)
             {
-                return TimeZoneInfo.FindSystemTimeZoneById("Europe/Copenhagen");
+                return $"Åbent nu – lukker kl. {time}";
             }
-            catch (TimeZoneNotFoundException)
+
+            var days = (status.NextChange.Date - now.Date).Days;
+            var when = days switch
             {
-                return TimeZoneInfo.FindSystemTimeZoneById("Romance Standard Time");
-            }
+                0 => $"åbner kl. {time}",
+                1 => $"åbner i morgen kl. {time}",
+                _ => $"åbner {status.NextChange.ToString("dddd", Danish)} kl. {time}"
+            };
+
+            return $"Lukket nu – {when}";
         }
     }
 }
