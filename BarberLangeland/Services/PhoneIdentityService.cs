@@ -69,7 +69,7 @@ namespace BarberLangeland.Services
                 user,
                 password,
                 isPersistent: false,
-                lockoutOnFailure: false);
+                lockoutOnFailure: true);
 
             return result.Succeeded;
         }

@@ -57,12 +57,24 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         });
     }
 
-    public HttpClient CreateBrowser() => CreateClient(new WebApplicationFactoryClientOptions
+    private static int _clientCounter;
+
+    /// <summary>
+    /// A cookie-keeping client that appears to come from its own address (via X-Forwarded-For,
+    /// as behind Azure), so the per-IP rate limit only affects the test that sets out to hit it.
+    /// </summary>
+    public HttpClient CreateBrowser()
     {
-        AllowAutoRedirect = false,
-        HandleCookies = true,
-        BaseAddress = new Uri("https://localhost")
-    });
+        var client = CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true,
+            BaseAddress = new Uri("https://localhost")
+        });
+        var n = Interlocked.Increment(ref _clientCounter);
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.{n / 65000}.{n / 250 % 250}.{n % 250 + 1}");
+        return client;
+    }
 
     public async Task EnsureAdminAsync()
     {
