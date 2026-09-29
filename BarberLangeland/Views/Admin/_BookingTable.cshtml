@@ -48,13 +48,13 @@ else
                     : "Bekræftet";
 
                 <tr class="@(booking.IsCancelled ? "is-cancelled" : string.Empty)">
-                    <td>@booking.BookingTime.ToString(@"HH\:mm")</td>
-                    <td>
+                    <td data-label="Tid">@booking.BookingTime.ToString(@"HH\:mm")</td>
+                    <td data-label="Kunde">
                         @customerName
                         <span class="admin-schedule__phone">@phone</span>
                     </td>
-                    <td>@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
-                    <td>
+                    <td data-label="Behandling">@booking.Service?.Name (@((int)booking.Duration.TotalMinutes) min)</td>
+                    <td data-label="Status">
                         <span class="badge @(booking.IsCancelled ? "text-bg-secondary" : booking.IsNoShow ? "text-bg-warning" : "text-bg-success")">@status</span>
                     </td>
                     <td class="admin-schedule__actions">
