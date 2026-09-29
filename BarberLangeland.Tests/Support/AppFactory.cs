@@ -18,12 +18,19 @@ namespace BarberLangeland.Tests.Support;
 /// The real application pipeline (routing, auth, antiforgery, views) running in-process in the
 /// Production environment, with SQL Server swapped for an in-memory SQLite database.
 /// </summary>
-public sealed class AppFactory : WebApplicationFactory<Program>
+public class AppFactory : WebApplicationFactory<Program>
 {
     public const string AdminEmail = "admin@example.com";
     public const string AdminPassword = "Admin-Test-1234!";
 
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private FakeEmailSender? _emails;
+
+    /// <summary>Whether the fake mail server counts as configured (which switches email verification on).</summary>
+    protected virtual bool EmailConfigured => false;
+
+    /// <summary>The mail the application tried to send.</summary>
+    public FakeEmailSender Emails => _emails ??= new FakeEmailSender(EmailConfigured);
 
     public AppFactory()
     {
@@ -48,6 +55,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_connection));
+
+            services.RemoveAll<ISiteEmailSender>();
+            services.AddSingleton<ISiteEmailSender>(Emails);
 
             // Program.cs runs Database.Migrate() (SQL Server migrations) at start-up; create the
             // schema from the model first. The migration attempt then fails and is logged by Program.

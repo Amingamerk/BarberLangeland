@@ -12,15 +12,21 @@ namespace BarberLangeland.Services
         private readonly IPhoneNumberNormalizer _normalizer;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly ISiteEmailSender _emailSender;
+        private readonly TimeProvider _clock;
 
         public CustomerIdentityService(
             IPhoneNumberNormalizer normalizer,
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager,
+            ISiteEmailSender emailSender,
+            TimeProvider clock)
         {
             _normalizer = normalizer;
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailSender = emailSender;
+            _clock = clock;
         }
 
         public string NormalizePhone(string? input)
@@ -141,7 +147,11 @@ namespace BarberLangeland.Services
                 // opaque value rather than something the customer types.
                 UserName = $"user_{Guid.NewGuid():N}",
                 Email = normalizedEmail,
-                EmailConfirmed = false,
+                // With working mail the customer must click the link within 24 hours or the account
+                // (and its bookings) is removed. Without mail nothing could ever confirm it, so the
+                // account is created confirmed and behaves as before.
+                EmailConfirmed = !_emailSender.IsConfigured,
+                RegisteredAt = _clock.LocalNow(),
                 PhoneNumber = e164,
                 // Not verified yet; verification by email link is planned. Do not mark it
                 // confirmed until something has actually confirmed it.

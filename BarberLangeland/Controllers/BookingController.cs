@@ -5,6 +5,7 @@ using BarberLangeland.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BarberLangeland.Controllers
 {
@@ -15,14 +16,20 @@ namespace BarberLangeland.Controllers
         private readonly IBookingService _bookingService;
         private readonly ICustomerIdentityService _customers;
         private readonly TimeProvider _clock;
+        private readonly IEmailVerificationService _verification;
+        private readonly SiteOptions _site;
 
         public BookingController(
             ApplicationDbContext context,
             IBookingAvailabilityService availabilityService,
             IBookingService bookingService,
             ICustomerIdentityService customers,
-            TimeProvider clock)
+            TimeProvider clock,
+            IEmailVerificationService verification,
+            IOptions<SiteOptions> site)
         {
+            _verification = verification;
+            _site = site.Value;
             _clock = clock;
             _context = context;
             _availabilityService = availabilityService;
@@ -168,8 +175,10 @@ namespace BarberLangeland.Controllers
                 // The views then fall back to "Ukendt navn" and show the account's phone number.
                 CustomerName = model.Name?.Trim(),
                 // Bookings are confirmed as soon as they are placed; admin no longer has to
-                // approve each one. Admin can still cancel or mark a no-show afterwards.
-                IsConfirmed = true,
+                // approve each one. The exception is a customer whose email is not confirmed yet:
+                // the booking holds the time, but only counts once the link in the mail is clicked
+                // (within 24 hours, otherwise the account and its bookings are removed).
+                IsConfirmed = user.EmailConfirmed,
                 CreatedAt = _clock.LocalNow(),
                 UserId = user.Id,
                 User = user
@@ -183,7 +192,18 @@ namespace BarberLangeland.Controllers
             }
 
             model.BookingConfirmed = true;
-            model.ConfirmationMessage = $"Din tid hos {barber.Name} er bekræftet.";
+            model.EmailVerificationPending = !user.EmailConfirmed;
+            if (model.EmailVerificationPending)
+            {
+                model.ConfirmedEmail = user.Email;
+                model.EmailVerificationSent = await _verification.SendConfirmationAsync(
+                    user,
+                    code => ConfirmationLinks.Build(Url, Request, _site, user.Id, code));
+            }
+
+            model.ConfirmationMessage = model.EmailVerificationPending
+                ? $"Din tid hos {barber.Name} er reserveret."
+                : $"Din tid hos {barber.Name} er bekræftet.";
             model.ConfirmedBarberName = barber.Name;
             model.ConfirmedServiceName = service.Name;
             model.ConfirmedDurationMinutes = service.DurationMinutes;

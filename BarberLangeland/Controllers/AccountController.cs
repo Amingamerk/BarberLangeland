@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace BarberLangeland.Controllers
 {
@@ -18,13 +19,19 @@ namespace BarberLangeland.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly TimeProvider _clock;
+        private readonly IEmailVerificationService _verification;
+        private readonly SiteOptions _site;
 
         public AccountController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            TimeProvider clock)
+            TimeProvider clock,
+            IEmailVerificationService verification,
+            IOptions<SiteOptions> site)
         {
+            _verification = verification;
+            _site = site.Value;
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
@@ -124,6 +131,42 @@ namespace BarberLangeland.Controllers
             return RedirectToAction("Index", "Home");
         }
 
+        /// <summary>
+        /// The link in the confirmation mail. Anonymous on purpose: the customer usually opens the
+        /// mail on a device where they are not signed in.
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string? userId, string? code)
+        {
+            var confirmed = await _verification.ConfirmAsync(userId, code);
+            return View(confirmed);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("email-send")]
+        public async Task<IActionResult> ResendConfirmation()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            if (user.EmailConfirmed)
+            {
+                return RedirectToAction(nameof(MyBookings));
+            }
+
+            var sent = await _verification.SendConfirmationAsync(
+                user,
+                code => ConfirmationLinks.Build(Url, Request, _site, user.Id, code));
+
+            TempData["ConfirmationResend"] = sent ? "sent" : "failed";
+            return RedirectToAction(nameof(MyBookings));
+        }
+
         [HttpGet]
         public async Task<IActionResult> MyBookings()
         {
@@ -144,6 +187,8 @@ namespace BarberLangeland.Controllers
             var now = _clock.LocalNow();
             var model = new MyBookingsViewModel
             {
+                EmailUnconfirmed = !user.EmailConfirmed,
+                Email = user.Email,
                 Upcoming = bookings.Where(b => b.BookingTime >= now).ToList(),
                 Past = bookings.Where(b => b.BookingTime < now).OrderByDescending(b => b.BookingTime).ToList()
             };

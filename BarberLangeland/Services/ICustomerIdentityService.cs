@@ -47,7 +47,8 @@ namespace BarberLangeland.Services
 
         /// <summary>
         /// Creates a new account for the supplied email, stores the phone number as contact
-        /// detail and signs the customer in. Neither the email nor the phone number is verified.
+        /// detail and signs the customer in. The email starts unconfirmed when mail is configured
+        /// (see <see cref="IEmailVerificationService"/>); the phone number is never verified.
         /// </summary>
         Task<IdentityResult> RegisterAsync(string? email, string? name, string? phone, string? password);
     }

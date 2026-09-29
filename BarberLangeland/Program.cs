@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 namespace BarberLangeland
@@ -84,6 +85,19 @@ namespace BarberLangeland
                             Window = TimeSpan.FromMinutes(1),
                             QueueLimit = 0
                         }));
+                // "Send the confirmation mail again": a few per hour per signed-in customer, so the
+                // button cannot be used to flood someone's inbox.
+                options.AddPolicy("email-send", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.User.Identity?.IsAuthenticated == true
+                            ? "user:" + httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                            : "ip:" + httpContext.Connection.RemoteIpAddress,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 3,
+                            Window = TimeSpan.FromHours(1),
+                            QueueLimit = 0
+                        }));
                 options.OnRejected = async (context, cancellationToken) =>
                 {
                     context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
@@ -91,6 +105,22 @@ namespace BarberLangeland
                         "For mange forsøg. Vent et øjeblik og prøv igen.", cancellationToken);
                 };
             });
+
+            // Outgoing mail (email verification). With no Email:Smtp:Host nothing is sent and
+            // verification is switched off, so a deploy without mail settings behaves as before.
+            builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Email:Smtp"));
+            builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection("Site"));
+            if (!string.IsNullOrWhiteSpace(builder.Configuration["Email:Smtp:Host"]))
+            {
+                builder.Services.AddSingleton<ISiteEmailSender, SmtpEmailSender>();
+            }
+            else
+            {
+                builder.Services.AddSingleton<ISiteEmailSender, LoggingEmailSender>();
+            }
+            // How long the link in the confirmation mail works.
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+                options.TokenLifespan = TimeSpan.FromHours(24));
 
             builder.Services.AddControllersWithViews();
             // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
@@ -102,6 +132,8 @@ namespace BarberLangeland
             builder.Services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
             builder.Services.AddScoped<ICustomerIdentityService, CustomerIdentityService>();
             builder.Services.AddScoped<IdentitySeeder>();
+            builder.Services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+            builder.Services.AddHostedService<UnconfirmedAccountCleanupService>();
 
             var app = builder.Build();
 
@@ -141,9 +173,10 @@ namespace BarberLangeland
 
             app.UseHttpsRedirection();
             app.UseRouting();
-            app.UseRateLimiter();
 
             app.UseAuthentication();
+            // After authentication so the limiter can tell signed-in customers apart.
+            app.UseRateLimiter();
             app.UseAuthorization();
 
             app.MapStaticAssets();

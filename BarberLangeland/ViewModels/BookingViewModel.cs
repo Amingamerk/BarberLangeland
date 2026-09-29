@@ -47,6 +47,14 @@ namespace BarberLangeland.ViewModels
 
         public bool BookingConfirmed { get; set; }
 
+        /// <summary>The time is held, but counts only once the email in the customer's inbox is confirmed.</summary>
+        public bool EmailVerificationPending { get; set; }
+
+        /// <summary>Whether the confirmation mail was actually handed to the mail server.</summary>
+        public bool EmailVerificationSent { get; set; }
+
+        public string? ConfirmedEmail { get; set; }
+
         public string? ConfirmationMessage { get; set; }
 
         // Resolved on the success path so the confirmation screen can show exactly what
