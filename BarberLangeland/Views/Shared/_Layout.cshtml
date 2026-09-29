@@ -1,9 +1,10 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Frisør Langeland</title>
+    <meta name="description" content="@(ViewData["Description"] ?? "Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning. Book din tid online.")" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -60,7 +61,7 @@
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
                         @if (!isAdmin)
                         {
-                            <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index" asp-fragment="kontakt">Kontakt</a></li>
                         }
                         @if (User?.Identity?.IsAuthenticated == true)
                         {
@@ -107,7 +108,7 @@
                     {
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="About">Om os</a></li>
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Prices">Priser</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#kontakt" data-mobile-menu-close>Kontakt</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index" asp-fragment="kontakt" data-mobile-menu-close>Kontakt</a></li>
                     }
                     @if (User?.Identity?.IsAuthenticated == true)
                     {
@@ -141,11 +142,11 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-8">
-                    <p>Frisør Langeland</p>
+                    <p>@SalonInfo.Name</p>
                     <p>CVR: 33341237</p>
-                    <p>Tlf: 22 82 97 27</p>
-                    <p>Mail: Lai13560@gmail.com</p>
-                    <p>Adresse: Østergade 12, 5900 Rudkøbing</p>
+                    <p>Tlf: <a href="tel:@SalonInfo.PhoneHref">@SalonInfo.PhoneDisplay</a></p>
+                    <p>Mail: <a href="mailto:@SalonInfo.Email">@SalonInfo.Email</a></p>
+                    <p>Adresse: <a href="@SalonInfo.MapUrl" target="_blank" rel="noopener">@SalonInfo.AddressLine1, @SalonInfo.AddressLine2</a></p>
                     <p class="text-dark-emphasis">&copy; 2026 - Frisør Langeland.</p>
 
                 </div>
