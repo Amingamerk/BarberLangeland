@@ -7,6 +7,7 @@ using BarberLangeland.Data;
 using BarberLangeland.Services;
 using BarberLangeland.ViewModels;
 
+[AdminNetworkOnly]
 [Authorize(Roles = IdentitySeeder.AdminRole)]
 public class BarbersController : Controller
 {

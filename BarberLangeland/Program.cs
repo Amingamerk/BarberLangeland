@@ -92,6 +92,9 @@ namespace BarberLangeland
                 };
             });
 
+            // Which addresses may open /Admin and /Barbers; see AdminAccessOptions.
+            builder.Services.Configure<AdminAccessOptions>(builder.Configuration.GetSection("Admin"));
+
             builder.Services.AddControllersWithViews();
             // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
             // built-in Identity UI is served from Razor Pages.
