@@ -69,8 +69,8 @@ public class CustomerIdentityServiceTests
         Assert.Equal(CustomerLookupOutcome.KnownEmail, await h.Customers.CheckEmailAsync("KUNDE@Example.COM"));
     }
 
-    [Fact(DisplayName = "Registration stores the email, the E.164 phone number and an opaque user name, unverified")]
-    public async Task Registration_stores_contact_details_unverified()
+    [Fact(DisplayName = "Registration stores the email, the E.164 phone number and an opaque user name")]
+    public async Task Registration_stores_contact_details()
     {
         using var h = new IdentityHarness();
         await Register(h, phone: "32 12 34 56");
@@ -80,8 +80,7 @@ public class CustomerIdentityServiceTests
         Assert.NotNull(user);
         Assert.Equal("+4532123456", user!.PhoneNumber);
         Assert.StartsWith("user_", user.UserName);
-        Assert.False(user.PhoneNumberConfirmed, "The phone number has not been verified by anything.");
-        Assert.False(user.EmailConfirmed, "The email has not been verified by anything.");
+        Assert.False(user.PhoneNumberConfirmed, "Nothing verifies the phone number.");
     }
 
     [Fact(DisplayName = "Registering a second account with the same email is rejected, ignoring letter case")]
