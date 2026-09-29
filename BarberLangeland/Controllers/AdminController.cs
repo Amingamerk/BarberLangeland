@@ -213,40 +213,54 @@ namespace BarberLangeland.Controllers
             // and the write below form one check-then-write sequence, and without this two
             // concurrent edits (or a public booking landing mid-flight) can both observe the
             // slot as free and both commit, double-booking the barber.
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            //
+            // Program.cs enables EnableRetryOnFailure, and the retrying execution strategy refuses
+            // a user-initiated transaction unless the whole unit of work runs inside
+            // strategy.ExecuteAsync. Without it every edit throws InvalidOperationException.
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            // Reuse the booking flow's own availability rules rather than duplicating the
-            // opening-hours and overlap logic here. The booking being moved is excluded so it
-            // does not occupy its own current slot.
-            var availableDays = await _availabilityService.GetAvailableDaysAsync(
-                barber.Id,
-                service.Id,
-                newStart.Date,
-                dayCount: 1,
-                excludeBookingId: booking.Id);
+            var moved = await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var slotIsAvailable = availableDays
-                .SelectMany(day => day.Slots.Select(slot => slot.Time))
-                .Any(slot => slot == time);
+                // Reuse the booking flow's own availability rules rather than duplicating the
+                // opening-hours and overlap logic here. The booking being moved is excluded so it
+                // does not occupy its own current slot.
+                var availableDays = await _availabilityService.GetAvailableDaysAsync(
+                    barber.Id,
+                    service.Id,
+                    newStart.Date,
+                    dayCount: 1,
+                    excludeBookingId: booking.Id);
 
-            if (!slotIsAvailable)
+                var slotIsAvailable = availableDays
+                    .SelectMany(day => day.Slots.Select(slot => slot.Time))
+                    .Any(slot => slot == time);
+
+                if (!slotIsAvailable)
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                booking.BookingTime = newStart;
+                booking.BarberId = barber.Id;
+                booking.ServiceId = service.Id;
+                // The stored duration must follow the new service, otherwise the booking keeps
+                // occupying the old treatment's worth of time.
+                booking.Duration = newDuration;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            });
+
+            if (!moved)
             {
                 TempData["AdminScheduleError"] =
                     "Tidspunktet er ikke ledigt for den valgte frisør og behandling.";
-                await transaction.RollbackAsync();
-                return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
             }
-
-            booking.BookingTime = newStart;
-            booking.BarberId = barber.Id;
-            booking.ServiceId = service.Id;
-            // The stored duration must follow the new service, otherwise the booking keeps
-            // occupying the old treatment's worth of time.
-            booking.Duration = newDuration;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
         }
