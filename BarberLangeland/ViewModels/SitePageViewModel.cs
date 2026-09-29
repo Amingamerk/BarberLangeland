@@ -13,5 +13,11 @@ namespace BarberLangeland.ViewModels
 
         /// <summary>Today's opening hours in Copenhagen, for the "Åbent i dag" line.</summary>
         public OpeningHoursViewModel? Today { get; set; }
+
+        /// <summary>Open or closed right now (shop-local time), for the dot and text in the hero.</summary>
+        public ShopStatus? Status { get; set; }
+
+        /// <summary>The hero line, for example "Åbent nu – lukker kl. 17:00" or "Lukket nu – åbner i morgen kl. 09:30".</summary>
+        public string StatusText { get; set; } = string.Empty;
     }
 }
