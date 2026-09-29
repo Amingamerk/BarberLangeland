@@ -16,15 +16,18 @@ namespace BarberLangeland.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly TimeProvider _clock;
 
         public AccountController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager,
+            TimeProvider clock)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
+            _clock = clock;
         }
 
         /// <summary>
@@ -136,7 +139,7 @@ namespace BarberLangeland.Controllers
                 .OrderBy(b => b.BookingTime)
                 .ToListAsync();
 
-            var now = DateTime.Now;
+            var now = _clock.LocalNow();
             var model = new MyBookingsViewModel
             {
                 Upcoming = bookings.Where(b => b.BookingTime >= now).ToList(),

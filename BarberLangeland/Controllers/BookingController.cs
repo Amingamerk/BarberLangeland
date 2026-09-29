@@ -13,13 +13,16 @@ namespace BarberLangeland.Controllers
         private readonly IBookingAvailabilityService _availabilityService;
         private readonly IBookingService _bookingService;
         private readonly IPhoneIdentityService _phoneIdentity;
+        private readonly TimeProvider _clock;
 
         public BookingController(
             ApplicationDbContext context,
             IBookingAvailabilityService availabilityService,
             IBookingService bookingService,
-            IPhoneIdentityService phoneIdentity)
+            IPhoneIdentityService phoneIdentity,
+            TimeProvider clock)
         {
+            _clock = clock;
             _context = context;
             _availabilityService = availabilityService;
             _bookingService = bookingService;
@@ -159,6 +162,7 @@ namespace BarberLangeland.Controllers
                 // Bookings are confirmed as soon as they are placed; admin no longer has to
                 // approve each one. Admin can still cancel or mark a no-show afterwards.
                 IsConfirmed = true,
+                CreatedAt = _clock.LocalNow(),
                 UserId = user.Id,
                 User = user
             };
@@ -245,7 +249,7 @@ namespace BarberLangeland.Controllers
         [HttpGet]
         public async Task<IActionResult> Availability(int barberId, int serviceId, DateTime bookingDate, int days = 2)
         {
-            if (barberId <= 0 || serviceId <= 0 || bookingDate.Date < DateTime.Today)
+            if (barberId <= 0 || serviceId <= 0 || bookingDate.Date < _clock.LocalToday())
             {
                 return BadRequest();
             }
@@ -300,9 +304,10 @@ namespace BarberLangeland.Controllers
 
             model.OpeningHours = _availabilityService.GetOpeningHours().ToList();
 
-            if (model.BookingDate.Date < DateTime.Today)
+            var today = _clock.LocalToday();
+            if (model.BookingDate.Date < today)
             {
-                model.BookingDate = DateTime.Today;
+                model.BookingDate = today;
             }
 
             if (model.BarberId != 0 && model.ServiceId != 0)
