@@ -1,9 +1,10 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="da">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Frisør Langeland</title>
+    <meta name="description" content="@(ViewData["Description"] ?? "Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning. Book din tid online.")" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -24,6 +25,14 @@
                    items (Om os, Priser, Kontakt, Mine bookinger, Book en tid) are replaced by
                    the two views admin actually works in. The logout form is shared between
                    both branches, so it is only written once. *@
+                @* Below the large breakpoint the desktop lists are hidden, so the hamburger
+                   and the #mobileMenu panel further down carry the same links. *@
+                <button class="mobile-toggle d-lg-none" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#mobileMenu" aria-controls="mobileMenu" aria-expanded="false"
+                        aria-label="Åbn menu">
+                    <span class="mobile-toggle__bars" aria-hidden="true"></span>
+                </button>
+
                 @if (isAdmin)
                 {
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
@@ -52,7 +61,7 @@
                     <ul class="navbar-nav flex-row gap-3 d-none d-lg-flex">
                         @if (!isAdmin)
                         {
-                            <li class="nav-item rounded-pill px-4"><a class="nav-link" href="#kontakt">Kontakt</a></li>
+                            <li class="nav-item rounded-pill px-4"><a class="nav-link" asp-controller="Home" asp-action="Index" asp-fragment="kontakt">Kontakt</a></li>
                         }
                         @if (User?.Identity?.IsAuthenticated == true)
                         {
@@ -86,6 +95,40 @@
 
                 <!-- <partial name="_LoginPartial" />  -->
             </div>
+
+            <div class="collapse mobile-menu d-lg-none" id="mobileMenu">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Forside</a></li>
+                    @if (isAdmin)
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Admin" asp-action="Schedule">Dagens skema</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Barbers" asp-action="Index">Frisører</a></li>
+                    }
+                    else
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="About">Om os</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Prices">Priser</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index" asp-fragment="kontakt" data-mobile-menu-close>Kontakt</a></li>
+                    }
+                    @if (User?.Identity?.IsAuthenticated == true)
+                    {
+                        @if (!isAdmin)
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="MyBookings">Mine bookinger</a></li>
+                        }
+                        <li class="nav-item">
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="nav-link">Log ud</button>
+                            </form>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="Login">Login</a></li>
+                    }
+                </ul>
+            </div>
         </nav>
     </header>
 
@@ -99,11 +142,11 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-8">
-                    <p>Frisør Langeland</p>
+                    <p>@SalonInfo.Name</p>
                     <p>CVR: 33341237</p>
-                    <p>Tlf: 22 82 97 27</p>
-                    <p>Mail: Lai13560@gmail.com</p>
-                    <p>Adresse: Østergade 12, 5900 Rudkøbing</p>
+                    <p>Tlf: <a href="tel:@SalonInfo.PhoneHref">@SalonInfo.PhoneDisplay</a></p>
+                    <p>Mail: <a href="mailto:@SalonInfo.Email">@SalonInfo.Email</a></p>
+                    <p>Adresse: <a href="@SalonInfo.MapUrl" target="_blank" rel="noopener">@SalonInfo.AddressLine1, @SalonInfo.AddressLine2</a></p>
                     <p class="text-dark-emphasis">&copy; 2026 - Frisør Langeland.</p>
 
                 </div>

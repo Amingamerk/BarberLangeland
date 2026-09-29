@@ -1,7 +1,7 @@
 namespace BarberLangeland.ViewModels
 {
     /// <summary>
-    /// Static contact details for the booking sidebar. Kept in one place so the copy can be
+    /// Static contact details for the booking sidebar, the footer and the public pages. Kept in one place so the copy can be
     /// changed without touching Razor markup.
     /// </summary>
     public static class SalonInfo

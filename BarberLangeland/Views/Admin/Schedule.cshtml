@@ -1,4 +1,6 @@
 @model AdminScheduleViewModel
+@using BarberLangeland.Services
+@inject TimeProvider Clock
 @{
     ViewData["Title"] = "Dagens skema";
 
@@ -11,7 +13,7 @@
     var monthLabel = firstOfMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("da-DK"));
     var previousMonth = firstOfMonth.AddMonths(-1);
     var nextMonth = firstOfMonth.AddMonths(1);
-    var today = DateTime.Today;
+    var today = Clock.LocalToday();
     var daCulture = new System.Globalization.CultureInfo("da-DK");
 }
 

@@ -9,6 +9,11 @@ namespace BarberLangeland.ViewModels
         public List<Booking> Upcoming { get; set; } = [];
 
         public List<Booking> Past { get; set; } = [];
+
+        /// <summary>The account's email has not been confirmed yet.</summary>
+        public bool EmailUnconfirmed { get; set; }
+
+        public string? Email { get; set; }
     }
 
     /// <summary>Email + password sign-in. Sign-in is by email, not by username.</summary>
