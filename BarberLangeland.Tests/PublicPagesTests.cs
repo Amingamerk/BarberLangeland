@@ -127,7 +127,7 @@ public class PublicPagesTests : IClassFixture<AppFactory>
 
         Assert.Contains($"mailto:{SalonInfo.Email}", footer);
         Assert.Contains($"tel:{SalonInfo.PhoneHref}", footer);
-        Assert.DoesNotContain("info@frisorlangeland.dk", html);
+        Assert.DoesNotContain("Lai13560@gmail.com", html);
     }
 
     [Fact(DisplayName = "The Kontakt link in the navigation goes to the front page section on every page")]
