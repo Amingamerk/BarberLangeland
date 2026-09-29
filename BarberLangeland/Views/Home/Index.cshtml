@@ -1,6 +1,7 @@
 @model SitePageViewModel
 @{
     ViewData["Title"] = "Forside";
+    ViewData["FullTitle"] = "Forside - Frisør i Rudkøbing | Frisør Langeland";
     ViewData["Description"] = "Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning med personlig service. Book din tid online.";
 }
 
@@ -30,6 +31,34 @@
     </div>
 </section>
 
+<!-- Om os: kort udgave, resten står på Om os-siden -->
+<section class="site-section about-section" id="about-us">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-6">
+                <img src="~/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg" class="img-thumbnail" alt="Bashar Al-Haj, frisør" loading="lazy" />
+            </div>
+            <div class="col-lg-6">
+                <h2 class="site-section__title text-start">Om os</h2>
+                <p>
+                    Frisør Langeland har været i branchen siden 2011. Vi bygger på old school
+                    barbertradition, skarpe fades og moderne styling med håndværk i ryggen.
+                </p>
+                <a asp-controller="Home" asp-action="About" class="btn btn-blue text-light rounded-pill px-4 mt-2">Læs mere om os</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="site-section site-section--alt review-section" id="review">
+    <div class="container">
+        <h2 class="site-section__title">Hvad kunder siger om os</h2>
+        <script src="https://elfsightcdn.com/platform.js" async></script>
+        <div class="elfsight-app-e6cb43a2-3fbc-4f5b-b42f-15d498d4988f" data-elfsight-app-lazy id="reviews-widget"></div>
+        <p class="site-note text-center" id="reviews-fallback" hidden>Anmeldelserne kan ikke vises lige nu.</p>
+    </div>
+</section>
+
 <!-- Priser: udtræk af behandlingerne, hentes fra databasen -->
 <section class="site-section" id="priser">
     <div class="container">
@@ -51,34 +80,6 @@
             }
         </div>
         <p class="text-center mt-4"><a asp-controller="Home" asp-action="Prices">Se alle priser og tider</a></p>
-    </div>
-</section>
-
-<!-- Om os: kort udgave, resten står på Om os-siden -->
-<section class="site-section site-section--alt about-section" id="about-us">
-    <div class="container">
-        <div class="row align-items-center g-4">
-            <div class="col-lg-6">
-                <img src="~/images/bcd24d41-f381-41f8-836e-d9489dc56724_19_90_0_316_6016_3384_880_495_81aa63b1.jpg" class="img-thumbnail" alt="Bashar Al-Haj, frisør" loading="lazy" />
-            </div>
-            <div class="col-lg-6">
-                <h2 class="site-section__title text-start">Om os</h2>
-                <p>
-                    Frisør Langeland har været i branchen siden 2011. Vi bygger på old school
-                    barbertradition, skarpe fades og moderne styling med håndværk i ryggen.
-                </p>
-                <a asp-controller="Home" asp-action="About" class="btn btn-blue text-light rounded-pill px-4 mt-2">Læs mere om os</a>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="site-section review-section" id="review">
-    <div class="container">
-        <h2 class="site-section__title">Hvad kunder siger om os</h2>
-        <script src="https://elfsightcdn.com/platform.js" async></script>
-        <div class="elfsight-app-e6cb43a2-3fbc-4f5b-b42f-15d498d4988f" data-elfsight-app-lazy id="reviews-widget"></div>
-        <p class="site-note text-center" id="reviews-fallback" hidden>Anmeldelserne kan ikke vises lige nu.</p>
     </div>
 </section>
 
