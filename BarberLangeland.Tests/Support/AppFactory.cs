@@ -33,6 +33,8 @@ public sealed class AppFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        // The test clients appear as 10.x.x.x (see CreateBrowser); everything else is outside the allow-list.
+        builder.UseSetting("Admin:AllowedIps", "10.0.0.0/8");
         builder.ConfigureServices(services =>
         {
             // EF Core 9+ registers the SQL Server options as IDbContextOptionsConfiguration<TContext>
@@ -63,7 +65,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
     /// A cookie-keeping client that appears to come from its own address (via X-Forwarded-For,
     /// as behind Azure), so the per-IP rate limit only affects the test that sets out to hit it.
     /// </summary>
-    public HttpClient CreateBrowser()
+    public HttpClient CreateBrowser(string? clientIp = null)
     {
         var client = CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -72,7 +74,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             BaseAddress = new Uri("https://localhost")
         });
         var n = Interlocked.Increment(ref _clientCounter);
-        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.{n / 65000}.{n / 250 % 250}.{n % 250 + 1}");
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp ?? $"10.{n / 65000}.{n / 250 % 250}.{n % 250 + 1}");
         return client;
     }
 

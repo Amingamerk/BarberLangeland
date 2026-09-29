@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BarberLangeland.Controllers
 {
     /// <summary>Shop-side schedule. Restricted to members of the seeded Admin role.</summary>
+    [AdminNetworkOnly]
     [Authorize(Roles = IdentitySeeder.AdminRole)]
     public class AdminController : Controller
     {
