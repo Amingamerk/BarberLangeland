@@ -14,10 +14,7 @@
         public int ServiceId { get; set; }
         public required Service Service { get; set; }
 
-        // The customer's name as given at booking time. Captured here rather than read from
-        // the account because a first-time customer books without ever creating a login.
-        // Named to match what it actually holds; it used to be called "Description", which
-        // read as an unused free-text field and invited its own deletion.
+        // The customer's name as given when booking (a first-time customer has no account name yet).
         public string? CustomerName { get; set; }
 
         public DateTime CreatedAt { get; set; }

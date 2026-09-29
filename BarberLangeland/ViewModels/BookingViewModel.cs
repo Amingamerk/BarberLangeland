@@ -12,10 +12,8 @@ namespace BarberLangeland.ViewModels
 
         public TimeSpan? BookingTime { get; set; }
 
-        // Nullable on purpose. MVC validates non-nullable reference types as implicitly
-        // [Required] before the action runs, with an English message. The controller validates
-        // each of these itself, with Danish messages, and only asks for what applies: a returning
-        // customer needs the email and password, a new one also name and phone number.
+        // Nullable on purpose: MVC would otherwise require them with an English message. The controller
+        // validates what applies (returning customers need email and password; new ones also name and phone).
         public string? Email { get; set; }
 
         public string? Name { get; set; }
