@@ -13,18 +13,18 @@ namespace BarberLangeland.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBookingAvailabilityService _availabilityService;
         private readonly IBookingService _bookingService;
-        private readonly IPhoneIdentityService _phoneIdentity;
+        private readonly ICustomerIdentityService _customers;
 
         public BookingController(
             ApplicationDbContext context,
             IBookingAvailabilityService availabilityService,
             IBookingService bookingService,
-            IPhoneIdentityService phoneIdentity)
+            ICustomerIdentityService customers)
         {
             _context = context;
             _availabilityService = availabilityService;
             _bookingService = bookingService;
-            _phoneIdentity = phoneIdentity;
+            _customers = customers;
         }
 
         [HttpGet]
@@ -65,47 +65,49 @@ namespace BarberLangeland.Controllers
                 ModelState.AddModelError(nameof(model.BookingTime), "Vælg et ledigt tidspunkt.");
             }
 
-            if (string.IsNullOrWhiteSpace(model.Phone))
+            var email = _customers.NormalizeEmail(model.Email);
+
+            if (string.IsNullOrWhiteSpace(model.Email))
             {
-                ModelState.AddModelError(nameof(model.Phone), "Indtast dit telefonnummer.");
+                ModelState.AddModelError(nameof(model.Email), "Indtast din e-mail.");
             }
-            else if (string.IsNullOrWhiteSpace(_phoneIdentity.NormalizePhone(model.Phone)))
+            else if (email.Length == 0)
             {
-                ModelState.AddModelError(nameof(model.Phone), "Indtast et gyldigt telefonnummer.");
+                ModelState.AddModelError(nameof(model.Email), "Indtast en gyldig e-mail.");
             }
 
-            var phoneIsKnown = false;
+            var emailIsKnown = false;
 
-            if (ModelState.IsValid && !string.IsNullOrWhiteSpace(model.Phone))
+            if (ModelState.IsValid && email.Length > 0)
             {
-                // Phone-first: an unknown number needs registration details, a known one only
-                // needs the password. Name and email are therefore validated here rather than
-                // up front, so a returning customer is never asked for them.
-                var outcome = await _phoneIdentity.CheckPhoneAsync(model.Phone);
+                // Email-first: a returning customer only needs the password. A new customer is
+                // asked for name, phone number (contact detail for the barber) and a password,
+                // so those are validated here rather than up front.
+                var outcome = await _customers.CheckEmailAsync(email);
 
-                if (outcome == PhoneIdentityOutcome.InvalidNumber)
+                if (outcome == CustomerLookupOutcome.KnownEmail)
                 {
-                    ModelState.AddModelError(nameof(model.Phone), "Indtast et gyldigt telefonnummer.");
-                }
-                else if (outcome == PhoneIdentityOutcome.KnownNumber)
-                {
-                    phoneIsKnown = true;
+                    emailIsKnown = true;
 
                     if (string.IsNullOrWhiteSpace(model.Password))
                     {
                         ModelState.AddModelError(nameof(model.Password), "Indtast din adgangskode.");
                     }
                 }
-                else
+                else if (outcome == CustomerLookupOutcome.UnknownEmail)
                 {
                     if (string.IsNullOrWhiteSpace(model.Name))
                     {
                         ModelState.AddModelError(nameof(model.Name), "Indtast dit navn.");
                     }
 
-                    if (string.IsNullOrWhiteSpace(model.Email))
+                    if (string.IsNullOrWhiteSpace(model.Phone))
                     {
-                        ModelState.AddModelError(nameof(model.Email), "Indtast din e-mail.");
+                        ModelState.AddModelError(nameof(model.Phone), "Indtast dit telefonnummer.");
+                    }
+                    else if (_customers.NormalizePhone(model.Phone).Length == 0)
+                    {
+                        ModelState.AddModelError(nameof(model.Phone), "Indtast et gyldigt telefonnummer.");
                     }
 
                     if (string.IsNullOrWhiteSpace(model.Password))
@@ -116,9 +118,13 @@ namespace BarberLangeland.Controllers
             }
 
             // Keep the revealed state consistent on redisplay, otherwise a failed POST would
-            // collapse back to the phone-only view and silently discard what the user typed.
-            model.PhoneConfirmed = !string.IsNullOrWhiteSpace(_phoneIdentity.NormalizePhone(model.Phone));
-            model.IsKnownPhone = phoneIsKnown;
+            // collapse back to the email-only view and silently discard what the user typed.
+            model.EmailChecked = email.Length > 0;
+            model.IsKnownEmail = emailIsKnown;
+            if (email.Length > 0)
+            {
+                model.Email = email;
+            }
 
             if (!ModelState.IsValid || barber == null || service == null || model.BookingTime == null)
             {
@@ -139,7 +145,7 @@ namespace BarberLangeland.Controllers
                 return View(model);
             }
 
-            var userIdResult = await ResolveUserAsync(model, phoneIsKnown);
+            var userIdResult = await ResolveUserAsync(model, emailIsKnown);
             if (userIdResult.Error != null)
             {
                 return View(model);
@@ -156,8 +162,8 @@ namespace BarberLangeland.Controllers
                 ServiceId = service.Id,
                 Service = service,
                 // A returning customer never typed a name, so there is nothing to store here.
-                // The views fall back to the phone number rather than misusing the email.
-                CustomerName = model.Name?.Trim() ?? model.Phone,
+                // The views then fall back to "Ukendt navn" and show the account's phone number.
+                CustomerName = model.Name?.Trim(),
                 // Bookings are confirmed as soon as they are placed; admin no longer has to
                 // approve each one. Admin can still cancel or mark a no-show afterwards.
                 IsConfirmed = true,
@@ -187,40 +193,40 @@ namespace BarberLangeland.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [EnableRateLimiting("customer-lookup")]
-        public async Task<IActionResult> CheckPhone([FromBody] CheckPhoneRequest request)
+        public async Task<IActionResult> CheckEmail([FromBody] CheckEmailRequest request)
         {
-            var outcome = await _phoneIdentity.CheckPhoneAsync(request?.Phone);
+            var outcome = await _customers.CheckEmailAsync(request?.Email);
 
-            if (outcome == PhoneIdentityOutcome.InvalidNumber)
+            if (outcome == CustomerLookupOutcome.InvalidEmail)
             {
-                return BadRequest(new { message = "Indtast et gyldigt telefonnummer." });
+                return BadRequest(new { message = "Indtast en gyldig e-mail." });
             }
 
-            // The phone-first flow has to tell the form whether to ask for a password or for
-            // name/email/password, so this does reveal whether a number is registered. It returns
+            // The email-first form has to tell the browser whether to ask for a password or for
+            // name/phone/password, so this does reveal whether an email is registered. It returns
             // nothing else about the account, and the customer-lookup rate limit keeps bulk
             // enumeration impractical.
-            return Json(new { exists = outcome == PhoneIdentityOutcome.KnownNumber });
+            return Json(new { exists = outcome == CustomerLookupOutcome.KnownEmail });
         }
 
-        private async Task<(ApplicationUser? User, string? Error)> ResolveUserAsync(BookingViewModel model, bool phoneIsKnown)
+        private async Task<(ApplicationUser? User, string? Error)> ResolveUserAsync(BookingViewModel model, bool emailIsKnown)
         {
-            if (phoneIsKnown)
+            if (emailIsKnown)
             {
-                var signedIn = await _phoneIdentity.SignInWithPhoneAsync(model.Phone, model.Password);
+                var signedIn = await _customers.SignInAsync(model.Email, model.Password);
 
                 if (!signedIn)
                 {
-                    ModelState.AddModelError(nameof(model.Password), "Telefonnummer eller adgangskode er forkert, eller kontoen er midlertidigt låst efter for mange forsøg.");
+                    ModelState.AddModelError(nameof(model.Password), "E-mail eller adgangskode er forkert, eller kontoen er midlertidigt låst efter for mange forsøg.");
                     return (null, "password");
                 }
             }
             else
             {
-                var registerResult = await _phoneIdentity.RegisterWithPhoneAsync(
-                    model.Phone,
-                    model.Name,
+                var registerResult = await _customers.RegisterAsync(
                     model.Email,
+                    model.Name,
+                    model.Phone,
                     model.Password);
 
                 if (!registerResult.Succeeded)
@@ -234,9 +240,7 @@ namespace BarberLangeland.Controllers
                 }
             }
 
-            var signedInUser = await _context.Users
-                .Include(u => u.Bookings)
-                .FirstOrDefaultAsync(u => u.PhoneNumber == _phoneIdentity.NormalizePhone(model.Phone));
+            var signedInUser = await _customers.FindByEmailAsync(model.Email);
 
             if (signedInUser == null)
             {
@@ -320,9 +324,9 @@ namespace BarberLangeland.Controllers
         }
     }
 
-    /// <summary>Body of the step 4 phone lookup.</summary>
-    public class CheckPhoneRequest
+    /// <summary>Body of the step 4 email lookup.</summary>
+    public class CheckEmailRequest
     {
-        public string? Phone { get; set; }
+        public string? Email { get; set; }
     }
 }

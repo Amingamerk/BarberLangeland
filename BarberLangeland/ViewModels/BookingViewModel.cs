@@ -13,28 +13,29 @@ namespace BarberLangeland.ViewModels
         public TimeSpan? BookingTime { get; set; }
 
         // Nullable on purpose. MVC validates non-nullable reference types as implicitly
-        // [Required] before the action runs, which would make these mandatory for every
-        // customer. They are only required when the phone number turns out to be unregistered,
-        // and the controller validates exactly that case.
-        public string? Name { get; set; }
-
+        // [Required] before the action runs, with an English message. The controller validates
+        // each of these itself, with Danish messages, and only asks for what applies: a returning
+        // customer needs the email and password, a new one also name and phone number.
         public string? Email { get; set; }
 
-        public string Phone { get; set; } = string.Empty;
+        public string? Name { get; set; }
 
-        public string Password { get; set; } = string.Empty;
+        /// <summary>Contact detail for the barber; required for a new customer, not used for lookup.</summary>
+        public string? Phone { get; set; }
 
-        /// <summary>
-        /// True once the phone number has been checked against existing accounts, which is
-        /// what gates the name/email/password fields in step 4.
-        /// </summary>
-        public bool PhoneConfirmed { get; set; }
+        public string? Password { get; set; }
 
         /// <summary>
-        /// Only meaningful once <see cref="PhoneConfirmed"/> is true: whether the checked
-        /// number belongs to an existing account (sign-in) or a new one (registration).
+        /// True once the email has been checked against existing accounts, which is what gates
+        /// the name/phone/password fields in step 4.
         /// </summary>
-        public bool IsKnownPhone { get; set; }
+        public bool EmailChecked { get; set; }
+
+        /// <summary>
+        /// Only meaningful once <see cref="EmailChecked"/> is true: whether the checked email
+        /// belongs to an existing account (sign-in) or a new one (registration).
+        /// </summary>
+        public bool IsKnownEmail { get; set; }
 
         public List<BarberOptionViewModel> Barbers { get; set; } = [];
 
