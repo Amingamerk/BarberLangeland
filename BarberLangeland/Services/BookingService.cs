@@ -16,36 +16,45 @@ namespace BarberLangeland.Services
 
         public async Task<Booking?> CreateBookingAsync(Booking booking)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            // Program.cs enables EnableRetryOnFailure, and the retrying execution strategy
+            // refuses user-initiated transactions unless the whole unit of work runs inside
+            // strategy.ExecuteAsync. Without this wrapper BeginTransactionAsync throws
+            // InvalidOperationException and every booking fails.
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            var barber = await _context.Barbers.FindAsync(booking.BarberId);
-            if (barber == null)
+            return await strategy.ExecuteAsync<Booking?>(async () =>
             {
-                return null;
-            }
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var start = booking.BookingTime;
-            var end = booking.BookingTime + booking.Duration;
+                var barber = await _context.Barbers.FindAsync(booking.BarberId);
+                if (barber == null)
+                {
+                    return null;
+                }
 
-            // Duration is a SQL Server "time" column, so BookingTime + Duration cannot be
-            // translated server-side. Narrow with an index-friendly window in SQL, then apply
-            // the precise overlap test in memory where TimeSpan arithmetic works.
-            var candidates = await _context.Bookings
-                .Where(b => b.BarberId == booking.BarberId
-                    && b.BookingTime < end
-                    && b.BookingTime > start.AddDays(-1))
-                .Select(b => new { b.BookingTime, b.Duration })
-                .ToListAsync();
+                var start = booking.BookingTime;
+                var end = booking.BookingTime + booking.Duration;
 
-            if (candidates.Any(b => b.BookingTime + b.Duration > start))
-            {
-                return null;
-            }
+                // Duration is a SQL Server "time" column, so BookingTime + Duration cannot be
+                // translated server-side. Narrow with an index-friendly window in SQL, then apply
+                // the precise overlap test in memory where TimeSpan arithmetic works.
+                var candidates = await _context.Bookings
+                    .Where(b => b.BarberId == booking.BarberId
+                        && b.BookingTime < end
+                        && b.BookingTime > start.AddDays(-1))
+                    .Select(b => new { b.BookingTime, b.Duration })
+                    .ToListAsync();
 
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return booking;
+                if (candidates.Any(b => b.BookingTime + b.Duration > start))
+                {
+                    return null;
+                }
+
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return booking;
+            });
         }
     }
 }
