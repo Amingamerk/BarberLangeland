@@ -3,6 +3,7 @@ using BarberLangeland.Models;
 using BarberLangeland.Services;
 using BarberLangeland.ViewModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace BarberLangeland.Controllers
@@ -41,6 +42,7 @@ namespace BarberLangeland.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("customer-lookup")]
         public async Task<IActionResult> Index(BookingViewModel model)
         {
             await PopulateOptionsAsync(model);
@@ -184,6 +186,7 @@ namespace BarberLangeland.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("customer-lookup")]
         public async Task<IActionResult> CheckPhone([FromBody] CheckPhoneRequest request)
         {
             var outcome = await _phoneIdentity.CheckPhoneAsync(request?.Phone);
@@ -193,8 +196,10 @@ namespace BarberLangeland.Controllers
                 return BadRequest(new { message = "Indtast et gyldigt telefonnummer." });
             }
 
-            // Deliberately returns nothing about the account itself so this endpoint cannot
-            // be used to discover which phone numbers are registered.
+            // The phone-first flow has to tell the form whether to ask for a password or for
+            // name/email/password, so this does reveal whether a number is registered. It returns
+            // nothing else about the account, and the customer-lookup rate limit keeps bulk
+            // enumeration impractical.
             return Json(new { exists = outcome == PhoneIdentityOutcome.KnownNumber });
         }
 
@@ -206,7 +211,7 @@ namespace BarberLangeland.Controllers
 
                 if (!signedIn)
                 {
-                    ModelState.AddModelError(nameof(model.Password), "Telefonnummer eller adgangskode er forkert.");
+                    ModelState.AddModelError(nameof(model.Password), "Telefonnummer eller adgangskode er forkert, eller kontoen er midlertidigt låst efter for mange forsøg.");
                     return (null, "password");
                 }
             }
