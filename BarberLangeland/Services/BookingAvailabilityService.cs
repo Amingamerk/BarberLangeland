@@ -41,6 +41,11 @@ namespace BarberLangeland.Services
             };
         }
 
+        public int GetOpenMinutes(DayOfWeek day)
+        {
+            return OpeningHours.TryGetValue(day, out var hours) ? (int)(hours.Close - hours.Open).TotalMinutes : 0;
+        }
+
         public ShopStatus GetShopStatus(DateTime localNow)
         {
             var today = localNow.Date;

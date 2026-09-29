@@ -2365,3 +2365,8 @@ footer p {
 .account-verify-banner__result {
     font-weight: 600;
 }
+
+/* Admin treatments: a hidden treatment is dimmed in the list. */
+.admin-schedule__table tr.is-hidden-service td {
+    opacity: 0.6;
+}

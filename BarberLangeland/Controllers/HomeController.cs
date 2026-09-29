@@ -56,7 +56,10 @@ namespace BarberLangeland.Controllers
 
             return new SitePageViewModel
             {
-                Services = await _context.Services.AsNoTracking().OrderBy(s => s.Id).ToListAsync(),
+                Services = await _context.Services.AsNoTracking()
+                    .Where(s => s.IsActive)
+                    .OrderBy(s => s.SortOrder).ThenBy(s => s.Id)
+                    .ToListAsync(),
                 Barbers = includeBarbers
                     ? await _context.Barbers.AsNoTracking().OrderBy(b => b.Name).ToListAsync()
                     : [],

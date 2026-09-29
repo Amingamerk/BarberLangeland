@@ -33,5 +33,8 @@ namespace BarberLangeland.Services
         /// exclusive, so at exactly 17:00 the shop counts as closed.
         /// </summary>
         ShopStatus GetShopStatus(DateTime localNow);
+
+        /// <summary>Minutes the shop is open on the given weekday (0 when closed all day).</summary>
+        int GetOpenMinutes(DayOfWeek day);
     }
 }
