@@ -96,6 +96,7 @@ namespace BarberLangeland
             // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
             // built-in Identity UI is served from Razor Pages.
             builder.Services.AddRazorPages();
+            builder.Services.AddSingleton<TimeProvider, CopenhagenTimeProvider>();
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
             builder.Services.AddSingleton<IPhoneNumberNormalizer, PhoneNumberNormalizer>();
