@@ -103,6 +103,13 @@ namespace BarberLangeland.Services
                 .FirstOrDefaultAsync();
 
             var firstDate = startDate.Date;
+
+            // Near DateTime.MaxValue the date arithmetic below would overflow; nothing is bookable there.
+            if (firstDate > DateTime.MaxValue.Date.AddDays(-(dayCount + 2)) || firstDate < DateTime.MinValue.AddDays(2))
+            {
+                return new List<BookingDayViewModel>();
+            }
+
             var lastDate = firstDate.AddDays(dayCount - 1);
 
             // Load every booking that could touch the requested window in a single round
@@ -110,6 +117,7 @@ namespace BarberLangeland.Services
             // TimeSpan arithmetic, which cannot be translated to SQL.
             var rawRows = await _context.Bookings
                 .Where(booking => booking.BarberId == barberId
+                    && !booking.IsCancelled
                     && booking.BookingTime < lastDate.Date.AddDays(1)
                     && booking.BookingTime > firstDate.AddDays(-1)
                     && (excludeBookingId == null || booking.Id != excludeBookingId))

@@ -39,10 +39,16 @@ namespace BarberLangeland.Controllers
             return View(await BuildModelAsync(includeBarbers: false));
         }
 
+        public IActionResult Privacy() => View();
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        public IActionResult Error(int? code)
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            return View(new ErrorViewModel
+            {
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+                StatusCode = code ?? 500
+            });
         }
 
         private async Task<SitePageViewModel> BuildModelAsync(bool includeBarbers)

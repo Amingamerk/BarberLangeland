@@ -180,10 +180,8 @@ namespace BarberLangeland.Controllers
                 // A returning customer never typed a name, so there is nothing to store here.
                 // The views then fall back to "Ukendt navn" and show the account's phone number.
                 CustomerName = model.Name?.Trim(),
-                // Bookings are confirmed as soon as they are placed; admin no longer has to
-                // approve each one. The exception is a customer whose email is not confirmed yet:
-                // the booking holds the time, but only counts once the link in the mail is clicked
-                // (within 24 hours, otherwise the account and its bookings are removed).
+                // Bookings are confirmed on creation, except for a customer who has not yet confirmed their email;
+                // that booking holds the time until the mail link is clicked (24 hours).
                 Price = service.Price,
                 IsConfirmed = user.EmailConfirmed,
                 CreatedAt = _clock.LocalNow(),
@@ -233,10 +231,8 @@ namespace BarberLangeland.Controllers
                 return BadRequest(new { message = "Indtast en gyldig e-mail." });
             }
 
-            // The email-first form has to tell the browser whether to ask for a password or for
-            // name/phone/password, so this does reveal whether an email is registered. It returns
-            // nothing else about the account, and the customer-lookup rate limit keeps bulk
-            // enumeration impractical.
+            // The form needs to know whether to ask for a password or for name/phone/password, so this reveals
+            // whether an email is registered. The customer-lookup rate limit makes bulk enumeration impractical.
             return Json(new { exists = outcome == CustomerLookupOutcome.KnownEmail });
         }
 
@@ -285,7 +281,8 @@ namespace BarberLangeland.Controllers
         [HttpGet]
         public async Task<IActionResult> Availability(int barberId, int serviceId, DateTime bookingDate, int days = 2)
         {
-            if (barberId <= 0 || serviceId <= 0 || bookingDate.Date < _clock.LocalToday())
+            if (barberId <= 0 || serviceId <= 0 || bookingDate.Date < _clock.LocalToday()
+                || bookingDate.Date > _clock.LocalToday().AddYears(2))
             {
                 return BadRequest();
             }
@@ -296,7 +293,8 @@ namespace BarberLangeland.Controllers
 
             // A hidden service has no bookable times. Ask for a service id that does not exist so
             // the answer has the same shape as for any unknown service: days with no slots.
-            var offered = await _context.Services.AnyAsync(s => s.Id == serviceId && s.IsActive);
+            var offered = await _context.Services.AnyAsync(s => s.Id == serviceId && s.IsActive)
+                && await _context.Barbers.AnyAsync(b => b.Id == barberId);
 
             var availability = await _availabilityService.GetAvailableDaysAsync(
                 barberId,

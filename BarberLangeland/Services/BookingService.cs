@@ -16,10 +16,7 @@ namespace BarberLangeland.Services
 
         public async Task<Booking?> CreateBookingAsync(Booking booking)
         {
-            // Program.cs enables EnableRetryOnFailure, and the retrying execution strategy
-            // refuses user-initiated transactions unless the whole unit of work runs inside
-            // strategy.ExecuteAsync. Without this wrapper BeginTransactionAsync throws
-            // InvalidOperationException and every booking fails.
+            // Runs inside the execution strategy because EnableRetryOnFailure rejects plain user transactions.
             var strategy = _context.Database.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync<Booking?>(async () =>
@@ -40,6 +37,7 @@ namespace BarberLangeland.Services
                 // the precise overlap test in memory where TimeSpan arithmetic works.
                 var candidates = await _context.Bookings
                     .Where(b => b.BarberId == booking.BarberId
+                        && !b.IsCancelled
                         && b.BookingTime < end
                         && b.BookingTime > start.AddDays(-1))
                     .Select(b => new { b.BookingTime, b.Duration })

@@ -30,8 +30,8 @@ namespace BarberLangeland
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
             // AddIdentity (not AddDefaultIdentity) so RoleManager is registered and the
-            // Admin role can be seeded and used for [Authorize(Roles = "Admin")].
-            // AddDefaultUI chains the Identity.UI login/register pages onto that builder.
+            // Admin role can be seeded and used for [Authorize(Roles = "Admin")]. The stock
+            // Identity UI pages are deliberately not added; sign-in is AccountController.
             builder.Services
                 .AddIdentity<ApplicationUser, IdentityRole>(options =>
                 {
@@ -42,15 +42,9 @@ namespace BarberLangeland
                     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders()
-                .AddDefaultUI();
+                .AddDefaultTokenProviders();
 
-            // Without this the cookie handler keeps its built-in defaults, so a Challenge from
-            // any [Authorize] action sends the visitor to the Identity.UI Razor Page at
-            // /Identity/Account/Login. That page signs in through PasswordSignInAsync, which
-            // does a username lookup - and usernames here are opaque "user_<guid>" values, so
-            // the lookup never matches and the page is a dead end. Pointing the challenge at
-            // AccountController.Login is what makes [Authorize] sign-in actually possible.
+            // Challenges go to AccountController.Login, which looks users up by email.
             builder.Services.ConfigureApplicationCookie(options =>
             {
                 options.LoginPath = "/Account/Login";
@@ -122,10 +116,20 @@ namespace BarberLangeland
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
                 options.TokenLifespan = TimeSpan.FromHours(24));
 
-            builder.Services.AddControllersWithViews();
-            // AddIdentity no longer implies this the way AddDefaultIdentity did, but the
-            // built-in Identity UI is served from Razor Pages.
-            builder.Services.AddRazorPages();
+            builder.Services.AddControllersWithViews(options =>
+            {
+                // Model-binding errors would otherwise reach visitors in English.
+                var messages = options.ModelBindingMessageProvider;
+                messages.SetValueIsInvalidAccessor(value => $"Værdien '{value}' er ikke gyldig.");
+                messages.SetAttemptedValueIsInvalidAccessor((value, field) => $"'{value}' er ikke en gyldig værdi for {field}.");
+                messages.SetUnknownValueIsInvalidAccessor(field => $"Værdien for {field} er ikke gyldig.");
+                messages.SetValueMustBeANumberAccessor(field => $"{field} skal være et tal.");
+                messages.SetNonPropertyValueMustBeANumberAccessor(() => "Værdien skal være et tal.");
+                messages.SetValueMustNotBeNullAccessor(value => $"Værdien '{value}' er ugyldig.");
+                messages.SetMissingBindRequiredValueAccessor(field => $"Værdien for {field} mangler.");
+                messages.SetMissingKeyOrValueAccessor(() => "Der mangler en værdi.");
+                messages.SetMissingRequestBodyRequiredValueAccessor(() => "Der mangler en værdi.");
+            });
             builder.Services.AddSingleton<TimeProvider, CopenhagenTimeProvider>();
             builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddScoped<IBookingAvailabilityService, BookingAvailabilityService>();
@@ -171,6 +175,18 @@ namespace BarberLangeland
                 app.UseHsts();
             }
 
+            // Unknown URLs and other empty error responses get a page in the site layout.
+            app.UseStatusCodePagesWithReExecute("/Home/Error", "?code={0}");
+
+            app.Use(async (context, next) =>
+            {
+                var headers = context.Response.Headers;
+                headers["X-Content-Type-Options"] = "nosniff";
+                headers["X-Frame-Options"] = "DENY";
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+                await next();
+            });
+
             app.UseHttpsRedirection();
             app.UseRouting();
 
@@ -184,8 +200,6 @@ namespace BarberLangeland
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}")
                 .WithStaticAssets();
-            app.MapRazorPages()
-               .WithStaticAssets();
 
             app.Run();
         }

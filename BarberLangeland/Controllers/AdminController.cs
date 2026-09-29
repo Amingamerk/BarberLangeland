@@ -32,6 +32,11 @@ namespace BarberLangeland.Controllers
         public async Task<IActionResult> Schedule(DateTime? date, DateTime? month)
         {
             var today = _clock.LocalToday();
+
+            // Dates far outside any real schedule fall back to today instead of overflowing.
+            date = InReasonableRange(date, today) ? date : null;
+            month = InReasonableRange(month, today) ? month : null;
+
             var selectedDate = (date ?? today).Date;
             // Default the calendar to the month the selected day falls in, so the plain
             // ?date=... links that already exist keep working unchanged.
@@ -74,11 +79,7 @@ namespace BarberLangeland.Controllers
                 model.Groups.Add(group);
             }
 
-            // Per-day counts for the whole month in a single round trip, rather than one
-            // query per day. Grouping on BookingTime.Date is translated to
-            // CAST(BookingTime AS date) and aggregated in SQL, so this stays cheap however
-            // busy the month is. The range predicate on BookingTime itself is what lets the
-            // provider use an index on it.
+            // Per-day counts for the whole month in one grouped query.
             var dayCounts = await _context.Bookings
                 .Where(b => b.BookingTime >= monthStart && b.BookingTime < monthEnd)
                 .GroupBy(b => b.BookingTime.Date)
@@ -125,10 +126,7 @@ namespace BarberLangeland.Controllers
                 return NotFound();
             }
 
-            // Flags are mutually exclusive: a booking that is cancelled is no longer merely
-            // unconfirmed, and no-show only makes sense for a booking that was kept.
-            // Bookings are confirmed on creation, so there is no separate confirm action and no
-            // pending state to resolve here.
+            // The flags are mutually exclusive; bookings are confirmed on creation, so there is no confirm action.
             switch (action)
             {
                 case "cancel":
@@ -142,10 +140,15 @@ namespace BarberLangeland.Controllers
                     booking.IsNoShow = true;
                     break;
                 case "reopen":
-                    // Restoring returns the booking to the state it had when created: an active,
-                    // confirmed appointment. Leaving it unconfirmed would strand it, since the
-                    // manual confirm action no longer exists. A no-show that turns out to have
-                    // been a no-show in name only correctly comes back as confirmed too.
+                    // Another booking may have taken the slot while this one was cancelled.
+                    if (booking.IsCancelled && await OverlapsActiveBookingAsync(booking))
+                    {
+                        TempData["AdminScheduleError"] =
+                            "Tidspunktet er blevet booket af en anden, så bookingen kan ikke gendannes.";
+                        return RedirectToAction(nameof(Schedule), MonthRoute(date, returnMonth));
+                    }
+
+                    // Restoring returns the booking to its created state: active and confirmed.
                     booking.IsConfirmed = true;
                     booking.IsCancelled = false;
                     booking.IsNoShow = false;
@@ -203,11 +206,7 @@ namespace BarberLangeland.Controllers
 
             var redirectDate = ResolveRedirectDate(returnDate, _clock.LocalToday());
 
-            // The availability service never offers a slot that has already passed, so moving a
-            // booking into the past fails the same check as a genuinely occupied slot. Check the
-            // clock here so the two cases report different reasons — otherwise the admin reads
-            // "ikke ledigt" and goes looking for a phantom conflict that does not exist. Today's
-            // remaining slots are still offered, so the comparison is against the full timestamp.
+            // Availability never offers past slots, so check the clock here to give a clearer message.
             if (newStart <= _clock.LocalNow())
             {
                 TempData["AdminScheduleError"] =
@@ -215,14 +214,8 @@ namespace BarberLangeland.Controllers
                 return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
             }
 
-            // Serializable, mirroring BookingService.CreateBookingAsync: the availability check
-            // and the write below form one check-then-write sequence, and without this two
-            // concurrent edits (or a public booking landing mid-flight) can both observe the
-            // slot as free and both commit, double-booking the barber.
-            //
-            // Program.cs enables EnableRetryOnFailure, and the retrying execution strategy refuses
-            // a user-initiated transaction unless the whole unit of work runs inside
-            // strategy.ExecuteAsync. Without it every edit throws InvalidOperationException.
+            // Serializable, like BookingService.CreateBookingAsync, so two edits cannot double-book.
+            // Runs inside the execution strategy because EnableRetryOnFailure rejects plain user transactions.
             var strategy = _context.Database.CreateExecutionStrategy();
 
             var moved = await strategy.ExecuteAsync(async () =>
@@ -275,6 +268,26 @@ namespace BarberLangeland.Controllers
 
             return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
         }
+
+        private async Task<bool> OverlapsActiveBookingAsync(Booking booking)
+        {
+            var start = booking.BookingTime;
+            var end = start + booking.Duration;
+
+            var neighbours = await _context.Bookings
+                .Where(b => b.Id != booking.Id
+                    && b.BarberId == booking.BarberId
+                    && !b.IsCancelled
+                    && b.BookingTime < end
+                    && b.BookingTime > start.AddDays(-1))
+                .Select(b => new { b.BookingTime, b.Duration })
+                .ToListAsync();
+
+            return neighbours.Any(b => b.BookingTime + b.Duration > start);
+        }
+
+        private static bool InReasonableRange(DateTime? value, DateTime today)
+            => value is null || (value.Value.Date >= today.AddYears(-20) && value.Value.Date <= today.AddYears(20));
 
         // Both redirect helpers keep the admin where they were. date is the day being viewed
         // and month is the calendar page; when a form came from the month list it posts
