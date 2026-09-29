@@ -3,7 +3,12 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Frisør Langeland</title>
+    @* Public pages set FullTitle for a longer, descriptive title; the rest use "<page> - Frisør Langeland". *@
+    <title>@(ViewData["FullTitle"] ?? $"{ViewData["Title"]} - Frisør Langeland")</title>
+    <meta name="theme-color" content="#E8DCC8" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="~/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" />
     <meta name="description" content="@(ViewData["Description"] ?? "Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning. Book din tid online.")" />
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
