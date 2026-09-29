@@ -1,0 +1,14 @@
+@model SitePageViewModel
+
+<table class="site-hours">
+    <tbody>
+        @foreach (var day in Model.OpeningHours)
+        {
+            var isToday = Model.Today != null && Model.Today.Day == day.Day;
+            <tr class="@(isToday ? "is-today" : null)">
+                <th scope="row">@day.Day</th>
+                <td class="@(day.IsClosed ? "text-muted" : null)">@day.Hours</td>
+            </tr>
+        }
+    </tbody>
+</table>

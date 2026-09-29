@@ -1,5 +1,7 @@
+@model SitePageViewModel
 @{
     ViewData["Title"] = "Priser";
+    ViewData["Description"] = "Priser hos Frisør Langeland i Rudkøbing: herreklip, børneklip og skægtrimning. Se tider og book online.";
 }
 
 <section class="page-section">
@@ -11,36 +13,21 @@
         </div>
 
         <div class="row g-4 justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <article class="card h-100 p-4">
-                    <div class="card-body d-flex flex-column">
-                        <h2 class="h4">Herreklip</h2>
-                        <p>Klassisk herreklip</p>
-                        <p class="text-muted">30 minutter</p>
-                        <p class="price-value mt-auto">250 kr.</p>
-                    </div>
-                </article>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <article class="card h-100 p-4">
-                    <div class="card-body d-flex flex-column">
-                        <h2 class="h4">Børneklip</h2>
-                        <p>Klipning til børn</p>
-                        <p class="text-muted">20 minutter</p>
-                        <p class="price-value mt-auto">180 kr.</p>
-                    </div>
-                </article>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <article class="card h-100 p-4">
-                    <div class="card-body d-flex flex-column">
-                        <h2 class="h4">Skægtrimning</h2>
-                        <p>Trimning af skæg</p>
-                        <p class="text-muted">15 minutter</p>
-                        <p class="price-value mt-auto">120 kr.</p>
-                    </div>
-                </article>
-            </div>
+            @foreach (var service in Model.Services)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="card h-100 p-4 site-price-card">
+                        <div class="card-body d-flex flex-column">
+                            <h2 class="h4">@service.Name</h2>
+                            <p>@service.Description</p>
+                            <p class="text-muted">@service.DurationMinutes minutter</p>
+                            <p class="price-value mt-auto">@service.Price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) kr.</p>
+                            <a asp-controller="Booking" asp-action="Index" asp-route-serviceId="@service.Id"
+                               class="btn btn-book rounded-pill px-4 align-self-start">Book @service.Name.ToLowerInvariant()</a>
+                        </div>
+                    </article>
+                </div>
+            }
         </div>
 
         <div class="text-center mt-5">
@@ -50,3 +37,16 @@
         </div>
     </div>
 </section>
+
+<section class="site-section site-section--alt">
+    <div class="container">
+        <h2 class="site-section__title">Ofte stillede spørgsmål</h2>
+        <div class="site-placeholder">
+            <strong>[Udfyld: FAQ]</strong>
+            Skriv 4–6 korte spørgsmål og svar, fx om betaling (kontant, MobilePay, kort), aflysning, om man kan
+            komme uden tid, og hvor gamle børn må være til børneklip. Fjern denne boks, når teksten er skrevet.
+        </div>
+    </div>
+</section>
+
+<partial name="_FindUs" model="Model" />

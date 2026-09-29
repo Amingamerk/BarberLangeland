@@ -2182,3 +2182,154 @@ footer p {
         display: none;
     }
 }
+
+/* ---- Public pages: Forside, Om os, Priser ---- */
+
+.site-section {
+    padding: 60px 20px;
+}
+
+.site-section--alt {
+    background-color: var(--color-cream-white);
+}
+
+.site-section__title {
+    color: var(--color-dark-slate);
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.site-subtitle {
+    color: var(--color-dark-slate);
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.site-note {
+    color: var(--color-dark-slate);
+    font-size: 0.9rem;
+    opacity: 0.75;
+}
+
+.site-price-card .btn-book {
+    margin-top: 1rem;
+}
+
+.site-hours {
+    max-width: 22rem;
+    width: 100%;
+}
+
+.site-hours th,
+.site-hours td {
+    font-weight: 400;
+    padding: 0.3rem 0;
+}
+
+.site-hours td {
+    text-align: right;
+}
+
+.site-hours tr.is-today th,
+.site-hours tr.is-today td {
+    color: var(--color-dark-slate);
+    font-weight: 700;
+}
+
+/* "Åbent i dag" line in the hero */
+.hero-today {
+    align-items: center;
+    color: var(--color-cream-white);
+    display: flex;
+    font-weight: 600;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.hero-today__dot {
+    background: var(--color-sage-green);
+    border-radius: 50%;
+    display: inline-block;
+    height: 0.7rem;
+    width: 0.7rem;
+}
+
+.hero-today__dot.is-closed {
+    background: #b0605a;
+}
+
+/* Team cards on Om os */
+.site-team-card {
+    overflow: hidden;
+}
+
+.site-team-card__photo {
+    aspect-ratio: 4 / 3;
+    display: block;
+    object-fit: cover;
+    width: 100%;
+}
+
+.site-team-card__photo--initial {
+    align-items: center;
+    background: var(--color-warm-sand);
+    color: var(--color-sage-green);
+    display: flex;
+    font-size: 4rem;
+    font-weight: 700;
+    justify-content: center;
+}
+
+/* Content the owner still has to write. Deliberately loud so it is not shipped by accident. */
+.site-placeholder {
+    background: repeating-linear-gradient(-45deg, #fff8e1, #fff8e1 12px, #fff3cd 12px, #fff3cd 24px);
+    border: 2px dashed #b58900;
+    border-radius: 12px;
+    color: #5c4a00;
+    padding: 1.5rem;
+}
+
+.site-placeholder strong {
+    display: block;
+    margin-bottom: 0.4rem;
+}
+
+@media (max-width: 767.98px) {
+    .site-section {
+        padding: 40px 20px;
+    }
+
+    .site-section__title {
+        font-size: 1.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-buttons .btn {
+        padding: 12px 18px;
+    }
+}
+
+/* Links inside the public sections were sage green on sand/cream, which is hard to read. */
+.site-section a:not(.btn):not(.btn-book),
+.site-hours a {
+    color: #46634f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.site-section a:not(.btn):not(.btn-book):hover {
+    color: var(--color-dark-slate);
+}
+
+/* Room for three hero buttons on one row on desktop. */
+.hero-content {
+    max-width: 720px;
+}
+
+/* The full-height rule is for pages that stand alone; the About page continues below its intro. */
+.page-section.page-section--intro {
+    min-height: 0;
+}

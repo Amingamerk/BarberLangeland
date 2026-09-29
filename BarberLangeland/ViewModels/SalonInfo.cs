@@ -1,7 +1,7 @@
 namespace BarberLangeland.ViewModels
 {
     /// <summary>
-    /// Static contact details for the booking sidebar. Kept in one place so the copy can be
+    /// Static contact details for the booking sidebar, the footer and the public pages. Kept in one place so the copy can be
     /// changed without touching Razor markup.
     /// </summary>
     public static class SalonInfo
@@ -12,7 +12,7 @@ namespace BarberLangeland.ViewModels
         public const string PhoneDisplay = "22 82 97 27";
         public const string PhoneHref = "+4522829727";
 
-        public const string Email = "info@frisorlangeland.dk";
+        public const string Email = "Lai13560@gmail.com";
         public const string InstagramHandle = "@frisorlangeland";
         public const string InstagramUrl = "https://www.instagram.com/";
 
