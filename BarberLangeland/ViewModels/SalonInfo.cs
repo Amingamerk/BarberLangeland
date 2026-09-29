@@ -12,7 +12,7 @@ namespace BarberLangeland.ViewModels
         public const string PhoneDisplay = "22 82 97 27";
         public const string PhoneHref = "+4522829727";
 
-        public const string Email = "Lai13560@gmail.com";
+        public const string Email = "info@frisorlangeland.dk";
         public const string InstagramHandle = "@frisorlangeland";
         public const string InstagramUrl = "https://www.instagram.com/";
 
