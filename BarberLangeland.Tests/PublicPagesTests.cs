@@ -23,9 +23,9 @@ public class PublicPagesTests : IClassFixture<AppFactory>
     }
 
     [Theory(DisplayName = "Public pages declare Danish, have a description and a Danish title")]
-    [InlineData("/", "Forside - Frisør Langeland")]
-    [InlineData("/Home/About", "Om os - Frisør Langeland")]
-    [InlineData("/Home/Prices", "Priser - Frisør Langeland")]
+    [InlineData("/", "Forside - Frisør i Rudkøbing | Frisør Langeland")]
+    [InlineData("/Home/About", "Om os - Frisør siden 2011 | Frisør Langeland")]
+    [InlineData("/Home/Prices", "Priser - Herreklip og skægtrimning | Frisør Langeland")]
     public async Task Pages_have_language_description_and_title(string url, string title)
     {
         var html = await GetAsync(url);
@@ -191,5 +191,70 @@ public class PublicPagesTests : IClassFixture<AppFactory>
     {
         var html = await GetAsync("/");
         Assert.Contains("id=\"reviews-fallback\"", html);
+    }
+
+    [Fact(DisplayName = "The front page shows Om os and the reviews before the prices, then Find os")]
+    public async Task Front_page_section_order()
+    {
+        var html = await GetAsync("/");
+
+        var about = html.IndexOf("id=\"about-us\"", StringComparison.Ordinal);
+        var reviews = html.IndexOf("id=\"review\"", StringComparison.Ordinal);
+        var prices = html.IndexOf("id=\"priser\"", StringComparison.Ordinal);
+        var findUs = html.IndexOf("id=\"kontakt\"", StringComparison.Ordinal);
+
+        Assert.True(about > 0 && reviews > 0 && prices > 0 && findUs > 0, "A section is missing.");
+        Assert.True(about < reviews, "Om os must come before the reviews.");
+        Assert.True(reviews < prices, "The reviews must come before the prices.");
+        Assert.True(prices < findUs, "Find os must come last.");
+    }
+
+    [Theory(DisplayName = "Neighbouring front page sections alternate background so they do not run together")]
+    [InlineData("about-us", false)]
+    [InlineData("review", true)]
+    [InlineData("priser", false)]
+    [InlineData("kontakt", true)]
+    public async Task Front_page_sections_alternate_background(string id, bool alt)
+    {
+        var html = await GetAsync("/");
+
+        var tag = Regex.Match(html, "<section[^>]*id=\"" + id + "\"[^>]*>").Value;
+
+        Assert.Equal(alt, tag.Contains("site-section--alt"));
+    }
+
+    [Theory(DisplayName = "Both layouts link the favicon in three formats and an iOS home-screen icon")]
+    [InlineData("/")]
+    [InlineData("/Booking")]
+    public async Task Pages_link_the_favicon(string url)
+    {
+        var html = await GetAsync(url);
+
+        Assert.Matches("<link rel=\"icon\" href=\"/favicon\\.svg[^\"]*\" type=\"image/svg\\+xml\"", html);
+        Assert.Matches("<link rel=\"icon\" href=\"/favicon\\.ico[^\"]*\"", html);
+        Assert.Matches("<link rel=\"apple-touch-icon\" href=\"/apple-touch-icon\\.png[^\"]*\"", html);
+    }
+
+    [Theory(DisplayName = "The favicon files are served with the right content type")]
+    [InlineData("/favicon.svg", "image/svg+xml")]
+    [InlineData("/favicon.ico", "image/x-icon")]
+    [InlineData("/apple-touch-icon.png", "image/png")]
+    public async Task Favicon_files_are_served(string url, string contentType)
+    {
+        var response = await _factory.CreateBrowser().GetAsync(url);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(contentType.Split('/')[1].Split('+')[0], response.Content.Headers.ContentType!.MediaType!);
+        Assert.True((await response.Content.ReadAsByteArrayAsync()).Length > 100);
+    }
+
+    [Theory(DisplayName = "Page titles are in Danish and say which page it is")]
+    [InlineData("/Booking", "Book en tid - Frisør Langeland")]
+    [InlineData("/Account/Login", "Log ind - Frisør Langeland")]
+    [InlineData("/Home/Error", "Fejl - Frisør Langeland")]
+    public async Task Other_titles_are_danish(string url, string title)
+    {
+        var html = await GetAsync(url);
+        Assert.Contains($"<title>{title}</title>", html);
     }
 }
