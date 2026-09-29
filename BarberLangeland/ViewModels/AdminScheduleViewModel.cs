@@ -5,10 +5,10 @@ namespace BarberLangeland.ViewModels
     /// <summary>One day's bookings, grouped by barber.</summary>
     public class AdminScheduleViewModel
     {
-        public DateTime Date { get; set; } = DateTime.Today;
+        public DateTime Date { get; set; }
 
         /// <summary>First day of the month the calendar is showing.</summary>
-        public DateTime Month { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+        public DateTime Month { get; set; }
 
         public List<Barber> Barbers { get; set; } = [];
 
@@ -39,10 +39,10 @@ namespace BarberLangeland.ViewModels
         public string EmptyMessage { get; set; } = "Ingen bookinger.";
 
         /// <summary>The day a status change should return the admin to.</summary>
-        public DateTime ReturnDate { get; set; } = DateTime.Today;
+        public DateTime ReturnDate { get; set; }
 
         /// <summary>First day of the month, echoed back so the redirect keeps the month open.</summary>
-        public DateTime ReturnMonth { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+        public DateTime ReturnMonth { get; set; }
     }
 
     /// <summary>How busy one day is, used to mark the calendar cell.</summary>

@@ -16,22 +16,28 @@ namespace BarberLangeland.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IBookingAvailabilityService _availabilityService;
+        private readonly TimeProvider _clock;
 
-        public AdminController(ApplicationDbContext context, IBookingAvailabilityService availabilityService)
+        public AdminController(
+            ApplicationDbContext context,
+            IBookingAvailabilityService availabilityService,
+            TimeProvider clock)
         {
             _context = context;
             _availabilityService = availabilityService;
+            _clock = clock;
         }
 
         [HttpGet]
         public async Task<IActionResult> Schedule(DateTime? date, DateTime? month)
         {
-            var selectedDate = (date ?? DateTime.Today).Date;
+            var today = _clock.LocalToday();
+            var selectedDate = (date ?? today).Date;
             // Default the calendar to the month the selected day falls in, so the plain
             // ?date=... links that already exist keep working unchanged.
             var monthStart = new DateTime(
-                (month ?? date ?? DateTime.Today).Year,
-                (month ?? date ?? DateTime.Today).Month,
+                (month ?? date ?? today).Year,
+                (month ?? date ?? today).Month,
                 1);
             var monthEnd = monthStart.AddMonths(1);
 
@@ -189,20 +195,20 @@ namespace BarberLangeland.Controllers
                 TempData["AdminScheduleError"] =
                     "Bookingen er aflyst eller markeret som mødt ikke op. Gendan den først, hvis du vil ændre den.";
                 return RedirectToAction(nameof(Schedule),
-                    MonthRoute(ResolveRedirectDate(returnDate), returnMonth));
+                    MonthRoute(ResolveRedirectDate(returnDate, _clock.LocalToday()), returnMonth));
             }
 
             var newStart = date.Date.Add(time);
             var newDuration = TimeSpan.FromMinutes(service.DurationMinutes);
 
-            var redirectDate = ResolveRedirectDate(returnDate);
+            var redirectDate = ResolveRedirectDate(returnDate, _clock.LocalToday());
 
             // The availability service never offers a slot that has already passed, so moving a
             // booking into the past fails the same check as a genuinely occupied slot. Check the
             // clock here so the two cases report different reasons — otherwise the admin reads
             // "ikke ledigt" and goes looking for a phantom conflict that does not exist. Today's
             // remaining slots are still offered, so the comparison is against the full timestamp.
-            if (newStart <= DateTime.Now)
+            if (newStart <= _clock.LocalNow())
             {
                 TempData["AdminScheduleError"] =
                     "Du kan ikke flytte en booking til et tidspunkt der er overstået.";
@@ -213,40 +219,54 @@ namespace BarberLangeland.Controllers
             // and the write below form one check-then-write sequence, and without this two
             // concurrent edits (or a public booking landing mid-flight) can both observe the
             // slot as free and both commit, double-booking the barber.
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            //
+            // Program.cs enables EnableRetryOnFailure, and the retrying execution strategy refuses
+            // a user-initiated transaction unless the whole unit of work runs inside
+            // strategy.ExecuteAsync. Without it every edit throws InvalidOperationException.
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            // Reuse the booking flow's own availability rules rather than duplicating the
-            // opening-hours and overlap logic here. The booking being moved is excluded so it
-            // does not occupy its own current slot.
-            var availableDays = await _availabilityService.GetAvailableDaysAsync(
-                barber.Id,
-                service.Id,
-                newStart.Date,
-                dayCount: 1,
-                excludeBookingId: booking.Id);
+            var moved = await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var slotIsAvailable = availableDays
-                .SelectMany(day => day.Slots.Select(slot => slot.Time))
-                .Any(slot => slot == time);
+                // Reuse the booking flow's own availability rules rather than duplicating the
+                // opening-hours and overlap logic here. The booking being moved is excluded so it
+                // does not occupy its own current slot.
+                var availableDays = await _availabilityService.GetAvailableDaysAsync(
+                    barber.Id,
+                    service.Id,
+                    newStart.Date,
+                    dayCount: 1,
+                    excludeBookingId: booking.Id);
 
-            if (!slotIsAvailable)
+                var slotIsAvailable = availableDays
+                    .SelectMany(day => day.Slots.Select(slot => slot.Time))
+                    .Any(slot => slot == time);
+
+                if (!slotIsAvailable)
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                booking.BookingTime = newStart;
+                booking.BarberId = barber.Id;
+                booking.ServiceId = service.Id;
+                // The stored duration must follow the new service, otherwise the booking keeps
+                // occupying the old treatment's worth of time.
+                booking.Duration = newDuration;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            });
+
+            if (!moved)
             {
                 TempData["AdminScheduleError"] =
                     "Tidspunktet er ikke ledigt for den valgte frisør og behandling.";
-                await transaction.RollbackAsync();
-                return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
             }
-
-            booking.BookingTime = newStart;
-            booking.BarberId = barber.Id;
-            booking.ServiceId = service.Id;
-            // The stored duration must follow the new service, otherwise the booking keeps
-            // occupying the old treatment's worth of time.
-            booking.Duration = newDuration;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return RedirectToAction(nameof(Schedule), MonthRoute(redirectDate, returnMonth));
         }
@@ -270,12 +290,12 @@ namespace BarberLangeland.Controllers
 
         // returnDate comes back from the form as a free-form string. Fall back to the date
         // being edited to, then to today, rather than trusting the posted value.
-        private static DateTime ResolveRedirectDate(string? returnDate)
+        private static DateTime ResolveRedirectDate(string? returnDate, DateTime fallback)
         {
             return DateTime.TryParse(returnDate, CultureInfo.InvariantCulture,
                 DateTimeStyles.None, out var parsed)
                 ? parsed.Date
-                : DateTime.Today;
+                : fallback;
         }
     }
 }

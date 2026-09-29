@@ -7,8 +7,8 @@
         Step = "contact",
         Title = "Kontaktoplysninger",
         Subtitle = "Log ind eller opret konto",
-        Status = Model.PhoneConfirmed
-            ? (Model.IsKnownPhone ? "Velkommen tilbage" : "Opret konto")
+        Status = Model.EmailChecked
+            ? (Model.IsKnownEmail ? "Velkommen tilbage" : "Opret konto")
             : "Vælg tidspunkt for at fortsætte"
     };
 }
@@ -20,54 +20,41 @@
     <fieldset class="booking-contact-grid" data-contact-fields>
         <legend class="visually-hidden">Kontaktoplysninger</legend>
 
-        @* Phone is the only field asked for up front; everything else is revealed after.
+        @* The email address is the only field asked for up front; everything else is revealed
+           after the server has said whether an account uses it. A returning customer then only
+           types a password, a new one also gives name and phone number (contact detail for the
+           barber). *@
+        <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
+        {
+            Id = "Email",
+            Label = "E-mail",
+            Type = "email",
+            Placeholder = "din@email.dk",
+            AutoComplete = "email",
+            Value = Model.Email ?? string.Empty
+        }' />
 
-           The country select and the number input are wrapped in a single bordered group so
-           they read as one control. The select keeps the same .booking-input/.booking-label
-           classes as _BookingField, which is what gives it the right height, font and
-           background — the group then supplies the single outer border and the caret, and
-           the individual controls go borderless. Styling the select with one-off classes
-           instead left it on default browser chrome, which is what made the old flag look
-           like an icon sitting inside its own little box. *@
-        <div class="booking-phone-row" data-phone-row>
-            <div class="booking-phone-group">
-                <label class="visually-hidden" for="PhoneCountryCode">Land</label>
-                <select class="booking-input booking-phone-group__country"
-                        id="PhoneCountryCode" name="PhoneCountryCode"
-                        data-country-select autocomplete="country">
-                    <option value="DK" selected>+45</option>
-                </select>
-                <label class="visually-hidden" for="Phone">Telefonnummer</label>
-                <input class="booking-input booking-phone-group__number"
-                       id="Phone"
-                       name="Phone"
-                       type="tel"
-                       placeholder="12 34 56 78"
-                       autocomplete="tel"
-                       value="@Model.Phone" />
-            </div>
-        </div>
-        @* These two sit between the phone field and the action buttons. They are grid
+        @* These two sit between the email field and the action buttons. They are grid
            children, so a message appearing here would otherwise insert a row and push
            every button down. booking-validation--reserved keeps the row height constant,
            which is why they must NOT carry [hidden] — Bootstrap's [hidden] rule is
            !important and would collapse the reservation back to zero. The client shows
            and hides them with an empty textContent instead. *@
-        <span asp-validation-for="Phone" class="booking-validation booking-validation--reserved"></span>
-        <p class="booking-validation booking-validation--reserved" data-phone-error role="alert"></p>
+        <span asp-validation-for="Email" class="booking-validation booking-validation--reserved"></span>
+        <p class="booking-validation booking-validation--reserved" data-email-error role="alert"></p>
 
-        <button class="booking-button booking-button--secondary" type="button" data-check-phone-button hidden>
+        <button class="booking-button booking-button--secondary" type="button" data-check-email-button hidden>
             Næste <span aria-hidden="true">»</span>
         </button>
 
-        @* Revealed only after the client has confirmed whether the number is registered.
-           Name/Email/Password are ALWAYS rendered: renderAccountReveal() in Index.cshtml
-           decides which of them apply by toggling visibility, so rendering them
-           conditionally meant the reveal block came back empty on a fresh GET and a
-           first-time customer could never get past the disabled Confirm button. *@
+        @* Revealed only after the client has confirmed whether the email is registered.
+           Name/Phone/Password are ALWAYS rendered: renderAccountReveal() in Index.cshtml decides
+           which of them apply by toggling visibility, so rendering them conditionally meant
+           the reveal block came back empty on a fresh GET and a first-time customer could never
+           get past the disabled Confirm button. *@
         <div class="booking-account-reveal" data-account-reveal aria-live="polite"
-         data-phone-confirmed="@(Model.PhoneConfirmed ? "true" : "false")"
-         data-phone-known="@(Model.IsKnownPhone ? "true" : "false")"
+         data-email-checked="@(Model.EmailChecked ? "true" : "false")"
+         data-email-known="@(Model.IsKnownEmail ? "true" : "false")"
          hidden>
             <p class="booking-account-reveal__hint">Udfyld dine oplysninger</p>
 
@@ -81,16 +68,29 @@
             }' />
             <span asp-validation-for="Name" class="booking-validation"></span>
 
-            <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
-            {
-                Id = "Email",
-                Label = "E-mail",
-                Type = "email",
-                Placeholder = "din@email.dk",
-                AutoComplete = "email",
-                Value = Model.Email ?? string.Empty
-            }' />
-            <span asp-validation-for="Email" class="booking-validation"></span>
+            @* The country select and the number input are wrapped in a single bordered group so
+               they read as one control. The select keeps the same .booking-input/.booking-label
+               classes as _BookingField, which gives it the right height, font and background;
+               the group supplies the single outer border and the caret. *@
+            <div class="booking-field" data-phone-field>
+                <label class="booking-label" for="Phone">Telefonnummer</label>
+                <div class="booking-phone-group">
+                    <label class="visually-hidden" for="PhoneCountryCode">Land</label>
+                    <select class="booking-input booking-phone-group__country"
+                            id="PhoneCountryCode" name="PhoneCountryCode"
+                            data-country-select autocomplete="country">
+                        <option value="DK" selected>+45</option>
+                    </select>
+                    <input class="booking-input booking-phone-group__number"
+                           id="Phone"
+                           name="Phone"
+                           type="tel"
+                           placeholder="12 34 56 78"
+                           autocomplete="tel"
+                           value="@Model.Phone" />
+                </div>
+            </div>
+            <span asp-validation-for="Phone" class="booking-validation"></span>
 
             <partial name="_BookingField" model='new BarberLangeland.ViewModels.BookingFieldViewModel
             {

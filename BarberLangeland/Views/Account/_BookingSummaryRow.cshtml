@@ -27,6 +27,10 @@
         {
             <span class="badge text-bg-warning">Mødt ikke op</span>
         }
+        else if (!Model.IsConfirmed)
+        {
+            <span class="badge text-bg-info">Afventer e-mail</span>
+        }
         else
         {
             <span class="badge text-bg-success">Bekræftet</span>

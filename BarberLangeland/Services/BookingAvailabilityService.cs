@@ -19,10 +19,12 @@ namespace BarberLangeland.Services
             };
 
         private readonly ApplicationDbContext _context;
+        private readonly TimeProvider _clock;
 
-        public BookingAvailabilityService(ApplicationDbContext context)
+        public BookingAvailabilityService(ApplicationDbContext context, TimeProvider clock)
         {
             _context = context;
+            _clock = clock;
         }
 
         public IReadOnlyList<OpeningHoursViewModel> GetOpeningHours()
@@ -103,7 +105,7 @@ namespace BarberLangeland.Services
                     // Today/Tomorrow label would be wrong for every day after the first.
                     Label = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
                     IsToday = offset == 0,
-                    Slots = BuildSlots(rawBookings, date, durationMinutes)
+                    Slots = BuildSlots(rawBookings, date, durationMinutes, _clock.LocalNow())
                 });
             }
 
@@ -113,7 +115,8 @@ namespace BarberLangeland.Services
         private static List<TimeSlotViewModel> BuildSlots(
             IReadOnlyList<(DateTime BookingTime, TimeSpan Duration)> bookings,
             DateTime date,
-            int durationMinutes)
+            int durationMinutes,
+            DateTime now)
         {
             if (!OpeningHours.TryGetValue(date.DayOfWeek, out var hours) || durationMinutes <= 0)
             {
@@ -136,7 +139,7 @@ namespace BarberLangeland.Services
                     candidate < booking.BookingTime + booking.Duration
                     && candidate + duration > booking.BookingTime);
 
-                if (!overlaps && (date.Date > DateTime.Today || candidate > DateTime.Now))
+                if (!overlaps && (date.Date > now.Date || candidate > now))
                 {
                     slots.Add(new TimeSlotViewModel { Time = candidate.TimeOfDay });
                 }

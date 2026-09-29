@@ -6,10 +6,10 @@ namespace BarberLangeland.Tests;
 
 public class BookingAvailabilityServiceTests
 {
-    private static List<TimeSpan> SlotsFor(TestDb db, DateTime date, int serviceId = TestData.HaircutServiceId)
+    private static List<TimeSpan> SlotsFor(TestDb db, DateTime date, int serviceId = TestData.HaircutServiceId, TimeProvider? clock = null)
     {
         using var context = db.CreateContext();
-        var service = new BookingAvailabilityService(context);
+        var service = new BookingAvailabilityService(context, clock ?? new CopenhagenTimeProvider());
         var days = service.GetAvailableDaysAsync(TestData.BarberId, serviceId, date, 1).GetAwaiter().GetResult();
         return days.Single().Slots.Select(slot => slot.Time).ToList();
     }
@@ -111,37 +111,67 @@ public class BookingAvailabilityServiceTests
         }
 
         using var verify = db.CreateContext();
-        var service = new BookingAvailabilityService(verify);
+        var service = new BookingAvailabilityService(verify, new CopenhagenTimeProvider());
         var days = service.GetAvailableDaysAsync(TestData.BarberId, TestData.HaircutServiceId, date, 1, bookingId)
             .GetAwaiter().GetResult();
 
         Assert.Contains(new TimeSpan(10, 0, 0), days.Single().Slots.Select(slot => slot.Time));
     }
 
+    // 2026-10-05 is a Monday and Copenhagen is on summer time (UTC+2) until 25 October.
     [Fact(DisplayName = "Today's slots that have already passed are not offered")]
     public void Past_slots_today_are_not_offered()
     {
         using var db = new TestDb();
-        var slots = SlotsFor(db, DateTime.Today);
+        var clock = TestClock.AtUtc(2026, 10, 5, 8, 15); // 10:15 in Copenhagen
 
-        Assert.All(slots, slot => Assert.True(DateTime.Today.Add(slot) > DateTime.Now));
+        var slots = SlotsFor(db, new DateTime(2026, 10, 5), clock: clock);
+
+        Assert.Equal(new TimeSpan(10, 30, 0), slots.First());
+        Assert.Equal(new TimeSpan(16, 30, 0), slots.Last());
     }
 
-    [Fact(DisplayName = "Today's slots are computed against Copenhagen time, not the server's clock")]
-    public void Today_slots_use_copenhagen_time()
+    [Fact(DisplayName = "Just after opening in Copenhagen, the server's UTC clock does not hide or add slots")]
+    public void Slots_follow_copenhagen_time_in_the_morning()
     {
-        // The app runs on Azure, whose clock is UTC. Slots between "UTC now" and "Copenhagen now"
-        // are already in the past for the customer. Time dependent: it can only detect the defect
-        // while the shop is open (or would be open, in UTC) and the two clocks disagree.
-        var copenhagen = TimeZoneInfo.FindSystemTimeZoneById("Europe/Copenhagen");
-        var copenhagenNow = TimeZoneInfo.ConvertTime(DateTime.UtcNow, copenhagen);
         using var db = new TestDb();
+        var clock = TestClock.AtUtc(2026, 10, 5, 7, 45); // 09:45 in Copenhagen, 07:45 UTC
 
-        var slots = SlotsFor(db, copenhagenNow.Date);
+        var slots = SlotsFor(db, new DateTime(2026, 10, 5), clock: clock);
 
-        Assert.All(slots, slot => Assert.True(
-            copenhagenNow.Date.Add(slot) > copenhagenNow,
-            $"Slot {slot:hh\\:mm} is offered but it is already {copenhagenNow:HH:mm} in Copenhagen."));
+        // Against the UTC clock 09:30 would still look bookable, although it passed 15 minutes ago.
+        Assert.Equal(new TimeSpan(10, 0, 0), slots.First());
+    }
+
+    [Fact(DisplayName = "After closing time in Copenhagen, no slots are offered for today")]
+    public void No_slots_after_closing_in_copenhagen()
+    {
+        using var db = new TestDb();
+        var clock = TestClock.AtUtc(2026, 10, 5, 16, 26); // 18:26 in Copenhagen, shop closed at 17:00
+
+        Assert.Empty(SlotsFor(db, new DateTime(2026, 10, 5), clock: clock));
+    }
+
+    [Fact(DisplayName = "Winter time (UTC+1) is applied too")]
+    public void Slots_follow_copenhagen_winter_time()
+    {
+        using var db = new TestDb();
+        var clock = TestClock.AtUtc(2026, 12, 7, 9, 50); // Monday 10:50 in Copenhagen (UTC+1)
+
+        var slots = SlotsFor(db, new DateTime(2026, 12, 7), clock: clock);
+
+        Assert.Equal(new TimeSpan(11, 0, 0), slots.First());
+    }
+
+    [Fact(DisplayName = "Tomorrow's slots are all offered regardless of the time of day today")]
+    public void Future_days_are_unaffected_by_the_clock()
+    {
+        using var db = new TestDb();
+        var clock = TestClock.AtUtc(2026, 10, 5, 15, 0);
+
+        var slots = SlotsFor(db, new DateTime(2026, 10, 6), clock: clock);
+
+        Assert.Equal(new TimeSpan(9, 30, 0), slots.First());
     }
 
     [Fact(DisplayName = "Day count below one is treated as one day")]
@@ -149,7 +179,7 @@ public class BookingAvailabilityServiceTests
     {
         using var db = new TestDb();
         using var context = db.CreateContext();
-        var service = new BookingAvailabilityService(context);
+        var service = new BookingAvailabilityService(context, new CopenhagenTimeProvider());
 
         var days = service.GetAvailableDaysAsync(TestData.BarberId, TestData.HaircutServiceId,
             TestData.FutureDate(DayOfWeek.Wednesday), -3).GetAwaiter().GetResult();
@@ -162,7 +192,7 @@ public class BookingAvailabilityServiceTests
     {
         using var db = new TestDb();
         using var context = db.CreateContext();
-        var service = new BookingAvailabilityService(context);
+        var service = new BookingAvailabilityService(context, new CopenhagenTimeProvider());
 
         var exception = Record.Exception(() =>
             service.GetAvailableDaysAsync(TestData.BarberId, TestData.HaircutServiceId,
