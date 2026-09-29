@@ -8,7 +8,7 @@ namespace BarberLangeland.ViewModels
 
         public int ServiceId { get; set; }
 
-        public DateTime BookingDate { get; set; } = DateTime.Today;
+        public DateTime BookingDate { get; set; }
 
         public TimeSpan? BookingTime { get; set; }
 
